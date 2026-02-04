@@ -1,0 +1,5 @@
+site_name: Test Site - Basic
+docs_dir: docs
+
+plugins:
+  - search

@@ -1,0 +1,9 @@
+site_name: Test Site - markdown_exec Error
+docs_dir: docs
+
+plugins:
+  - search
+  - markdown-exec
+
+markdown_extensions:
+  - pymdownx.superfences

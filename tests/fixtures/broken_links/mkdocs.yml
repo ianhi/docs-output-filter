@@ -1,0 +1,6 @@
+site_name: Test Site - Broken Links
+docs_dir: docs
+strict: true
+
+plugins:
+  - search

@@ -1,0 +1,13 @@
+site_name: Test Site - Multiple Errors
+docs_dir: docs
+
+plugins:
+  - search
+  - markdown-exec
+
+markdown_extensions:
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Missing: does_not_exist.md
