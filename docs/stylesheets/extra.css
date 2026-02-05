@@ -1,3 +1,17 @@
+/* Make content area wider */
+.md-content {
+  max-width: none;
+}
+
+.md-main__inner {
+  max-width: 1400px;
+}
+
+/* Hide table of contents on home page to give more room */
+.md-sidebar--secondary {
+  display: none;
+}
+
 /* Side-by-side comparison */
 .comparison {
   display: flex;
@@ -8,12 +22,18 @@
 .comparison-item {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .comparison-item pre {
   margin-top: 0;
-  font-size: 0.75rem;
-  line-height: 1.4;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  overflow-x: auto;
+}
+
+.comparison-item code {
+  white-space: pre;
 }
 
 .comparison-header {

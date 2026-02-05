@@ -23,6 +23,7 @@ theme:
   features:
     - content.code.copy
     - navigation.sections
+    - navigation.tabs
 
 markdown_extensions:
   - admonition
