@@ -2,6 +2,8 @@
 
 **Filter mkdocs output to show only what matters: warnings and errors.**
 
+Includes an [MCP server](mcp-server.md) for AI code assistant integration (Claude Code, etc.).
+
 ## What It Does
 
 mkdocs-output-filter processes mkdocs build output and:

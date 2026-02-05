@@ -15,6 +15,12 @@ from mkdocs_filter import (
     parse_markdown_exec_issue,
     parse_mkdocs_output,
 )
+from mkdocs_filter.parsing import (
+    InfoCategory,
+    InfoMessage,
+    group_info_messages,
+    parse_info_messages,
+)
 
 
 class TestExtractBuildInfo:
@@ -656,3 +662,395 @@ class TestStreamingProcessor:
         # Should have captured two errors total (one from each rebuild)
         assert len(captured_issues) == 2
         assert "Second rebuild" in captured_issues[1].message
+
+
+class TestInfoMessageDataclass:
+    """Tests for InfoMessage dataclass."""
+
+    def test_creates_minimal_info_message(self) -> None:
+        msg = InfoMessage(category=InfoCategory.BROKEN_LINK, file="docs/index.md")
+        assert msg.category == InfoCategory.BROKEN_LINK
+        assert msg.file == "docs/index.md"
+        assert msg.target is None
+        assert msg.suggestion is None
+
+    def test_creates_full_info_message(self) -> None:
+        msg = InfoMessage(
+            category=InfoCategory.ABSOLUTE_LINK,
+            file="docs/index.md",
+            target="/other.md",
+            suggestion="other.md",
+        )
+        assert msg.category == InfoCategory.ABSOLUTE_LINK
+        assert msg.file == "docs/index.md"
+        assert msg.target == "/other.md"
+        assert msg.suggestion == "other.md"
+
+
+class TestInfoCategoryEnum:
+    """Tests for InfoCategory enum values."""
+
+    def test_broken_link_category(self) -> None:
+        assert InfoCategory.BROKEN_LINK.value == "broken_link"
+
+    def test_absolute_link_category(self) -> None:
+        assert InfoCategory.ABSOLUTE_LINK.value == "absolute_link"
+
+    def test_unrecognized_link_category(self) -> None:
+        assert InfoCategory.UNRECOGNIZED_LINK.value == "unrecognized_link"
+
+    def test_missing_nav_category(self) -> None:
+        assert InfoCategory.MISSING_NAV.value == "missing_nav"
+
+    def test_no_git_logs_category(self) -> None:
+        assert InfoCategory.NO_GIT_LOGS.value == "no_git_logs"
+
+
+class TestParseInfoMessages:
+    """Tests for parse_info_messages function."""
+
+    def test_parses_broken_link_single_quotes(self) -> None:
+        lines = [
+            "INFO    -  Doc file 'docs/index.md' contains a link 'missing.md', but the target is not found among documentation files.",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 1
+        assert messages[0].category == InfoCategory.BROKEN_LINK
+        assert messages[0].file == "docs/index.md"
+        assert messages[0].target == "missing.md"
+
+    def test_parses_broken_link_double_quotes(self) -> None:
+        lines = [
+            'INFO    -  Doc file "docs/page.md" contains a link "other.md", but the target is not found.',
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 1
+        assert messages[0].category == InfoCategory.BROKEN_LINK
+        assert messages[0].file == "docs/page.md"
+        assert messages[0].target == "other.md"
+
+    def test_parses_absolute_link(self) -> None:
+        lines = [
+            "INFO    -  Doc file 'docs/index.md' contains an absolute link '/api/index.md', it was left as is.",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 1
+        assert messages[0].category == InfoCategory.ABSOLUTE_LINK
+        assert messages[0].file == "docs/index.md"
+        assert messages[0].target == "/api/index.md"
+        assert messages[0].suggestion is None
+
+    def test_parses_absolute_link_with_suggestion(self) -> None:
+        lines = [
+            "INFO    -  Doc file 'docs/index.md' contains an absolute link '/other.md', it was left as is. Did you mean 'other.md'?",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 1
+        assert messages[0].category == InfoCategory.ABSOLUTE_LINK
+        assert messages[0].file == "docs/index.md"
+        assert messages[0].target == "/other.md"
+        assert messages[0].suggestion == "other.md"
+
+    def test_parses_unrecognized_relative_link(self) -> None:
+        lines = [
+            "INFO    -  Doc file 'docs/guide.md' contains an unrecognized relative link 'broken-link.md', it was left as is.",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 1
+        assert messages[0].category == InfoCategory.UNRECOGNIZED_LINK
+        assert messages[0].file == "docs/guide.md"
+        assert messages[0].target == "broken-link.md"
+
+    def test_parses_unrecognized_link_with_suggestion(self) -> None:
+        lines = [
+            "INFO    -  Doc file 'docs/guide.md' contains an unrecognized relative link 'typo.md', it was left as is. Did you mean 'page.md'?",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 1
+        assert messages[0].category == InfoCategory.UNRECOGNIZED_LINK
+        assert messages[0].suggestion == "page.md"
+
+    def test_parses_no_git_logs(self) -> None:
+        lines = [
+            "[git-revision-date-localized-plugin] 'docs/new-page.md' has no git logs, cannot get revision date. Is git installed?",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 1
+        assert messages[0].category == InfoCategory.NO_GIT_LOGS
+        assert messages[0].file == "docs/new-page.md"
+
+    def test_parses_no_git_logs_double_quotes(self) -> None:
+        lines = [
+            '[git-revision-date-localized-plugin] "docs/draft.md" has no git logs',
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 1
+        assert messages[0].category == InfoCategory.NO_GIT_LOGS
+        assert messages[0].file == "docs/draft.md"
+
+    def test_parses_missing_nav_single_file(self) -> None:
+        lines = [
+            'INFO    -  The following pages exist in the docs directory, but are not included in the "nav" configuration:',
+            "  - orphan.md",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 1
+        assert messages[0].category == InfoCategory.MISSING_NAV
+        assert messages[0].file == "orphan.md"
+
+    def test_parses_missing_nav_multiple_files(self) -> None:
+        lines = [
+            'INFO    -  The following pages exist in the docs directory, but are not included in the "nav" configuration:',
+            "  - orphan1.md",
+            "  - orphan2.md",
+            "  - subdir/orphan3.md",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 3
+        assert all(m.category == InfoCategory.MISSING_NAV for m in messages)
+        assert messages[0].file == "orphan1.md"
+        assert messages[1].file == "orphan2.md"
+        assert messages[2].file == "subdir/orphan3.md"
+
+    def test_missing_nav_block_ends_at_non_dash_line(self) -> None:
+        lines = [
+            'INFO    -  The following pages exist in the docs directory, but are not included in the "nav" configuration:',
+            "  - orphan.md",
+            "INFO    -  Building documentation...",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 1
+        assert messages[0].file == "orphan.md"
+
+    def test_parses_multiple_different_info_types(self) -> None:
+        lines = [
+            "INFO    -  Building documentation...",
+            "INFO    -  Doc file 'docs/index.md' contains a link 'broken.md', but the target is not found.",
+            "[git-revision-date-localized-plugin] 'docs/new.md' has no git logs",
+            "INFO    -  Doc file 'docs/page.md' contains an absolute link '/other.md', it was left as is.",
+            "INFO    -  Documentation built in 1.00 seconds",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 3
+        categories = [m.category for m in messages]
+        assert InfoCategory.BROKEN_LINK in categories
+        assert InfoCategory.NO_GIT_LOGS in categories
+        assert InfoCategory.ABSOLUTE_LINK in categories
+
+    def test_ignores_warning_lines(self) -> None:
+        lines = [
+            "WARNING -  markdown_exec: Execution of python code block exited with errors",
+            "INFO    -  Doc file 'docs/index.md' contains a link 'broken.md', but the target is not found.",
+        ]
+        messages = parse_info_messages(lines)
+        # Should only get the INFO message, not the WARNING
+        assert len(messages) == 1
+        assert messages[0].category == InfoCategory.BROKEN_LINK
+
+    def test_ignores_error_lines(self) -> None:
+        lines = [
+            "ERROR   -  Configuration error: 'nav' contains invalid entry",
+            "INFO    -  Doc file 'docs/index.md' contains a link 'broken.md', but the target is not found.",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 1
+        assert messages[0].category == InfoCategory.BROKEN_LINK
+
+    def test_returns_empty_for_no_matches(self) -> None:
+        lines = [
+            "INFO    -  Building documentation...",
+            "INFO    -  Cleaning site directory",
+            "INFO    -  Documentation built in 0.50 seconds",
+        ]
+        messages = parse_info_messages(lines)
+        assert len(messages) == 0
+
+    def test_returns_empty_for_empty_input(self) -> None:
+        messages = parse_info_messages([])
+        assert len(messages) == 0
+
+    def test_handles_mixed_real_output(self) -> None:
+        """Test with realistic mkdocs output mixing INFO messages."""
+        lines = [
+            "INFO    -  Building documentation...",
+            "INFO    -  Cleaning site directory",
+            'INFO    -  The following pages exist in the docs directory, but are not included in the "nav" configuration:',
+            "  - draft.md",
+            "  - notes/scratch.md",
+            "[git-revision-date-localized-plugin] 'docs/draft.md' has no git logs, cannot get revision date.",
+            "INFO    -  Doc file 'docs/index.md' contains a link 'missing.md', but the target is not found among documentation files.",
+            "INFO    -  Doc file 'docs/api.md' contains an absolute link '/users/list', it was left as is.",
+            "INFO    -  Documentation built in 2.34 seconds",
+        ]
+        messages = parse_info_messages(lines)
+
+        # Should find: 2 missing nav, 1 no git logs, 1 broken link, 1 absolute link
+        assert len(messages) == 5
+
+        # Check we got the right categories
+        cats = [m.category for m in messages]
+        assert cats.count(InfoCategory.MISSING_NAV) == 2
+        assert cats.count(InfoCategory.NO_GIT_LOGS) == 1
+        assert cats.count(InfoCategory.BROKEN_LINK) == 1
+        assert cats.count(InfoCategory.ABSOLUTE_LINK) == 1
+
+
+class TestGroupInfoMessages:
+    """Tests for group_info_messages function."""
+
+    def test_groups_by_category(self) -> None:
+        messages = [
+            InfoMessage(category=InfoCategory.BROKEN_LINK, file="a.md", target="x.md"),
+            InfoMessage(category=InfoCategory.NO_GIT_LOGS, file="b.md"),
+            InfoMessage(category=InfoCategory.BROKEN_LINK, file="c.md", target="y.md"),
+        ]
+        groups = group_info_messages(messages)
+
+        assert len(groups) == 2
+        assert InfoCategory.BROKEN_LINK in groups
+        assert InfoCategory.NO_GIT_LOGS in groups
+        assert len(groups[InfoCategory.BROKEN_LINK]) == 2
+        assert len(groups[InfoCategory.NO_GIT_LOGS]) == 1
+
+    def test_returns_empty_dict_for_empty_input(self) -> None:
+        groups = group_info_messages([])
+        assert groups == {}
+
+    def test_preserves_order_within_category(self) -> None:
+        messages = [
+            InfoMessage(category=InfoCategory.MISSING_NAV, file="first.md"),
+            InfoMessage(category=InfoCategory.MISSING_NAV, file="second.md"),
+            InfoMessage(category=InfoCategory.MISSING_NAV, file="third.md"),
+        ]
+        groups = group_info_messages(messages)
+
+        assert len(groups[InfoCategory.MISSING_NAV]) == 3
+        assert groups[InfoCategory.MISSING_NAV][0].file == "first.md"
+        assert groups[InfoCategory.MISSING_NAV][1].file == "second.md"
+        assert groups[InfoCategory.MISSING_NAV][2].file == "third.md"
+
+    def test_groups_all_categories(self) -> None:
+        messages = [
+            InfoMessage(category=InfoCategory.BROKEN_LINK, file="a.md", target="x"),
+            InfoMessage(category=InfoCategory.ABSOLUTE_LINK, file="b.md", target="/y"),
+            InfoMessage(category=InfoCategory.UNRECOGNIZED_LINK, file="c.md", target="z"),
+            InfoMessage(category=InfoCategory.MISSING_NAV, file="d.md"),
+            InfoMessage(category=InfoCategory.NO_GIT_LOGS, file="e.md"),
+        ]
+        groups = group_info_messages(messages)
+
+        assert len(groups) == 5
+        for cat in InfoCategory:
+            assert cat in groups
+            assert len(groups[cat]) == 1
+
+    def test_single_message_creates_single_group(self) -> None:
+        messages = [
+            InfoMessage(category=InfoCategory.BROKEN_LINK, file="only.md", target="missing.md"),
+        ]
+        groups = group_info_messages(messages)
+
+        assert len(groups) == 1
+        assert InfoCategory.BROKEN_LINK in groups
+        assert groups[InfoCategory.BROKEN_LINK][0].file == "only.md"
+
+
+class TestStreamingProcessorInfoMessages:
+    """Tests for StreamingProcessor tracking of INFO messages."""
+
+    def test_collects_info_messages_during_build(self) -> None:
+        console = Console(force_terminal=False, no_color=True, width=80)
+
+        processor = StreamingProcessor(
+            console=console,
+            verbose=False,
+            errors_only=False,
+        )
+
+        lines = [
+            "INFO    -  Building documentation...",
+            "INFO    -  Doc file 'docs/index.md' contains a link 'broken.md', but the target is not found.",
+            "[git-revision-date-localized-plugin] 'docs/new.md' has no git logs",
+            "INFO    -  Documentation built in 1.00 seconds",
+        ]
+
+        for line in lines:
+            processor.process_line(line)
+
+        processor.finalize()
+
+        # Check that info messages were collected
+        assert len(processor.all_info_messages) == 2
+        cats = [m.category for m in processor.all_info_messages]
+        assert InfoCategory.BROKEN_LINK in cats
+        assert InfoCategory.NO_GIT_LOGS in cats
+
+    def test_clears_info_messages_on_rebuild(self) -> None:
+        console = Console(force_terminal=False, no_color=True, width=80)
+
+        processor = StreamingProcessor(
+            console=console,
+            verbose=False,
+            errors_only=False,
+        )
+
+        # First build with info message
+        for line in [
+            "INFO    -  Building...",
+            "INFO    -  Doc file 'docs/index.md' contains a link 'old.md', but the target is not found.",
+            "INFO    -  Documentation built in 1.00 seconds",
+            "INFO    -  Serving on http://127.0.0.1:8000/",
+        ]:
+            processor.process_line(line)
+
+        assert len(processor.all_info_messages) == 1
+        assert processor.all_info_messages[0].target == "old.md"
+
+        # Rebuild with different info message
+        for line in [
+            "INFO    -  Detected file changes",
+            "INFO    -  Building...",
+            "INFO    -  Doc file 'docs/page.md' contains a link 'new.md', but the target is not found.",
+            "INFO    -  Documentation built in 0.50 seconds",
+        ]:
+            processor.process_line(line)
+
+        processor.finalize()
+
+        # Should only have the new message after rebuild
+        assert len(processor.all_info_messages) == 1
+        assert processor.all_info_messages[0].target == "new.md"
+
+    def test_handles_multiple_info_messages_in_single_build(self) -> None:
+        console = Console(force_terminal=False, no_color=True, width=80)
+
+        processor = StreamingProcessor(
+            console=console,
+            verbose=False,
+            errors_only=False,
+        )
+
+        lines = [
+            "INFO    -  Building documentation...",
+            'INFO    -  The following pages exist in the docs directory, but are not included in the "nav" configuration:',
+            "  - orphan1.md",
+            "  - orphan2.md",
+            "[git-revision-date-localized-plugin] 'docs/draft.md' has no git logs",
+            "INFO    -  Doc file 'docs/index.md' contains a link 'missing.md', but the target is not found.",
+            "INFO    -  Doc file 'docs/api.md' contains an absolute link '/users', it was left as is.",
+            "INFO    -  Documentation built in 1.50 seconds",
+        ]
+
+        for line in lines:
+            processor.process_line(line)
+
+        processor.finalize()
+
+        # Should have: 2 missing nav + 1 no git logs + 1 broken link + 1 absolute link = 5
+        assert len(processor.all_info_messages) == 5
+
+        groups = group_info_messages(processor.all_info_messages)
+        assert len(groups[InfoCategory.MISSING_NAV]) == 2
+        assert len(groups[InfoCategory.NO_GIT_LOGS]) == 1
+        assert len(groups[InfoCategory.BROKEN_LINK]) == 1
+        assert len(groups[InfoCategory.ABSOLUTE_LINK]) == 1

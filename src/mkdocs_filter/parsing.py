@@ -22,6 +22,26 @@ class Level(Enum):
     WARNING = "WARNING"
 
 
+class InfoCategory(Enum):
+    """Categories for important INFO messages that should be shown."""
+
+    BROKEN_LINK = "broken_link"  # Link target not found
+    ABSOLUTE_LINK = "absolute_link"  # Absolute link left as-is
+    UNRECOGNIZED_LINK = "unrecognized_link"  # Unrecognized relative link
+    MISSING_NAV = "missing_nav"  # Page not in nav
+    NO_GIT_LOGS = "no_git_logs"  # Git revision plugin can't find logs
+
+
+@dataclass
+class InfoMessage:
+    """An important INFO message that should be shown (grouped with similar messages)."""
+
+    category: InfoCategory
+    file: str  # The doc file this relates to
+    target: str | None = None  # Link target, suggested fix, etc.
+    suggestion: str | None = None  # e.g., "Did you mean 'index.md'?"
+
+
 @dataclass
 class Issue:
     """A warning or error from mkdocs output."""
@@ -134,6 +154,129 @@ def extract_build_info(lines: list[str]) -> BuildInfo:
         if match := re.search(r"Building documentation to directory: (.+)", line):
             info.build_dir = match.group(1).strip()
     return info
+
+
+def parse_info_messages(lines: list[str]) -> list[InfoMessage]:
+    """Parse important INFO messages that should be shown to the user."""
+    messages: list[InfoMessage] = []
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+
+        # Only process INFO lines (not WARNING/ERROR - those are handled separately)
+        if "WARNING" in line or "ERROR" in line:
+            i += 1
+            continue
+
+        # Pattern: Doc file 'X.md' contains a link 'Y', but the target is not found
+        if match := re.search(
+            r"Doc file ['\"]([^'\"]+)['\"] contains a link ['\"]([^'\"]+)['\"].*(?:target is not found|not found)",
+            line,
+        ):
+            messages.append(
+                InfoMessage(
+                    category=InfoCategory.BROKEN_LINK,
+                    file=match.group(1),
+                    target=match.group(2),
+                )
+            )
+            i += 1
+            continue
+
+        # Pattern: Doc file 'X.md' contains an absolute link 'Y', it was left as is
+        if match := re.search(
+            r"Doc file ['\"]([^'\"]+)['\"] contains an absolute link ['\"]([^'\"]+)['\"].*left as is",
+            line,
+        ):
+            # Check for suggestion on same or next line
+            suggestion = None
+            if "Did you mean" in line:
+                if suggest_match := re.search(r"Did you mean ['\"]([^'\"]+)['\"]", line):
+                    suggestion = suggest_match.group(1)
+            messages.append(
+                InfoMessage(
+                    category=InfoCategory.ABSOLUTE_LINK,
+                    file=match.group(1),
+                    target=match.group(2),
+                    suggestion=suggestion,
+                )
+            )
+            i += 1
+            continue
+
+        # Pattern: Doc file 'X.md' contains an unrecognized relative link 'Y'
+        if match := re.search(
+            r"Doc file ['\"]([^'\"]+)['\"] contains an unrecognized relative link ['\"]([^'\"]+)['\"]",
+            line,
+        ):
+            suggestion = None
+            if "Did you mean" in line:
+                if suggest_match := re.search(r"Did you mean ['\"]([^'\"]+)['\"]", line):
+                    suggestion = suggest_match.group(1)
+            messages.append(
+                InfoMessage(
+                    category=InfoCategory.UNRECOGNIZED_LINK,
+                    file=match.group(1),
+                    target=match.group(2),
+                    suggestion=suggestion,
+                )
+            )
+            i += 1
+            continue
+
+        # Pattern: [git-revision-date-localized-plugin] 'X.md' has no git logs
+        if match := re.search(
+            r"\[git-revision-date-localized-plugin\].*['\"]([^'\"]+)['\"].*has no git logs",
+            line,
+        ):
+            messages.append(
+                InfoMessage(
+                    category=InfoCategory.NO_GIT_LOGS,
+                    file=match.group(1),
+                )
+            )
+            i += 1
+            continue
+
+        # Pattern: pages not in nav (multi-line block)
+        if "pages exist in the docs directory, but are not included" in line:
+            # Collect following lines that look like file paths
+            i += 1
+            while i < len(lines):
+                next_line = lines[i].strip()
+                # Lines starting with "- " are file entries
+                if next_line.startswith("- "):
+                    file_path = next_line[2:].strip()
+                    messages.append(
+                        InfoMessage(
+                            category=InfoCategory.MISSING_NAV,
+                            file=file_path,
+                        )
+                    )
+                    i += 1
+                elif next_line and not next_line.startswith("-"):
+                    # End of the list
+                    break
+                else:
+                    i += 1
+            continue
+
+        i += 1
+
+    return messages
+
+
+def group_info_messages(
+    messages: list[InfoMessage],
+) -> dict[InfoCategory, list[InfoMessage]]:
+    """Group InfoMessages by category."""
+    groups: dict[InfoCategory, list[InfoMessage]] = {}
+    for msg in messages:
+        if msg.category not in groups:
+            groups[msg.category] = []
+        groups[msg.category].append(msg)
+    return groups
 
 
 def parse_mkdocs_output(lines: list[str]) -> list[Issue]:

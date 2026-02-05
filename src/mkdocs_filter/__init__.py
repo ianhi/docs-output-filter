@@ -36,6 +36,8 @@ class DisplayMode(Enum):
 from mkdocs_filter.parsing import (  # noqa: E402
     BuildInfo,
     ChunkBoundary,
+    InfoCategory,
+    InfoMessage,
     Issue,
     Level,
     StateFileData,
@@ -45,7 +47,9 @@ from mkdocs_filter.parsing import (  # noqa: E402
     extract_build_info,
     find_project_root,
     get_state_file_path,
+    group_info_messages,
     is_in_multiline_block,
+    parse_info_messages,
     parse_markdown_exec_issue,
     parse_mkdocs_output,
     read_state_file,
@@ -63,12 +67,16 @@ __all__ = [
     "StateFileData",
     "ChunkBoundary",
     "DisplayMode",
+    "InfoCategory",
+    "InfoMessage",
     # Parsing functions
     "detect_chunk_boundary",
     "is_in_multiline_block",
     "extract_build_info",
     "parse_mkdocs_output",
     "parse_markdown_exec_issue",
+    "parse_info_messages",
+    "group_info_messages",
     "dedent_code",
     # State file functions
     "find_project_root",
@@ -79,6 +87,7 @@ __all__ = [
     "StreamingProcessor",
     # CLI
     "print_issue",
+    "print_info_groups",
     "print_summary",
     "main",
 ]
@@ -107,7 +116,9 @@ class StreamingProcessor:
         self.buffer: list[str] = []
         self.raw_buffer: list[str] = []  # All lines for state file
         self.all_issues: list[Issue] = []
+        self.all_info_messages: list[InfoMessage] = []  # Important INFO messages
         self.seen_issues: set[tuple[Level, str]] = set()
+        self.seen_info: set[tuple[InfoCategory, str, str | None]] = set()  # Dedupe info messages
         self.build_info = BuildInfo()
         self.prev_line: str | None = None
         self._pending_display = False
@@ -170,7 +181,9 @@ class StreamingProcessor:
         self.buffer.clear()
         self.raw_buffer.clear()
         self.all_issues.clear()
+        self.all_info_messages.clear()
         self.seen_issues.clear()
+        self.seen_info.clear()
         self.build_info = BuildInfo()
 
     def _write_state_file(self) -> None:
@@ -196,16 +209,24 @@ class StreamingProcessor:
         # Parse issues from buffer
         issues = parse_mkdocs_output(self.buffer)
 
+        # Parse important INFO messages and dedupe
+        info_messages = parse_info_messages(self.buffer)
+        for msg in info_messages:
+            info_key = (msg.category, msg.file, msg.target)
+            if info_key not in self.seen_info:
+                self.seen_info.add(info_key)
+                self.all_info_messages.append(msg)
+
         # Filter and dedupe
         for issue in issues:
             if self.errors_only and issue.level != Level.ERROR:
                 continue
 
-            key = (issue.level, issue.message[:100])
-            if key in self.seen_issues:
+            issue_key = (issue.level, issue.message[:100])
+            if issue_key in self.seen_issues:
                 continue
 
-            self.seen_issues.add(key)
+            self.seen_issues.add(issue_key)
             self.all_issues.append(issue)
             self.on_issue(issue)
 
@@ -322,6 +343,81 @@ def print_issue(console: Console, issue: Issue, verbose: bool = False) -> None:
                 )
 
     console.print()
+
+
+# Category display names and icons
+INFO_CATEGORY_DISPLAY = {
+    InfoCategory.BROKEN_LINK: ("🔗 Broken links", "Link target not found"),
+    InfoCategory.ABSOLUTE_LINK: ("🔗 Absolute links", "Left as-is, may not work"),
+    InfoCategory.UNRECOGNIZED_LINK: ("🔗 Unrecognized links", "Could not resolve"),
+    InfoCategory.MISSING_NAV: ("📄 Pages not in nav", "Not included in navigation"),
+    InfoCategory.NO_GIT_LOGS: ("📅 No git history", "git-revision plugin warning"),
+}
+
+
+def print_info_groups(
+    console: Console,
+    groups: dict[InfoCategory, list[InfoMessage]],
+    verbose: bool = False,
+    max_files_shown: int = 5,
+) -> None:
+    """Print grouped INFO messages with expandable display."""
+    from rich.tree import Tree
+
+    if not groups:
+        return
+
+    for category, messages in groups.items():
+        title, description = INFO_CATEGORY_DISPLAY.get(category, (category.value, ""))
+        count = len(messages)
+
+        # Create a tree for this category
+        header = f"[cyan]{title}[/cyan] [dim]({count} files)[/dim]"
+        if description:
+            header += f" [dim]- {description}[/dim]"
+
+        tree = Tree(header)
+
+        # Group by unique targets if applicable (for link issues)
+        if category in (
+            InfoCategory.BROKEN_LINK,
+            InfoCategory.ABSOLUTE_LINK,
+            InfoCategory.UNRECOGNIZED_LINK,
+        ):
+            # Group by target
+            by_target: dict[str, list[InfoMessage]] = {}
+            for msg in messages:
+                target = msg.target or "unknown"
+                if target not in by_target:
+                    by_target[target] = []
+                by_target[target].append(msg)
+
+            for target, target_msgs in sorted(by_target.items()):
+                target_count = len(target_msgs)
+                suggestion = target_msgs[0].suggestion
+                target_label = f"[yellow]'{target}'[/yellow]"
+                if suggestion:
+                    target_label += f" [dim]→ Did you mean '{suggestion}'?[/dim]"
+                target_label += f" [dim]({target_count} files)[/dim]"
+
+                branch = tree.add(target_label)
+
+                # Show files (limited unless verbose)
+                files_to_show = target_msgs if verbose else target_msgs[:max_files_shown]
+                for msg in files_to_show:
+                    branch.add(f"[dim]{msg.file}[/dim]")
+                if not verbose and len(target_msgs) > max_files_shown:
+                    branch.add(f"[dim]... and {len(target_msgs) - max_files_shown} more[/dim]")
+        else:
+            # Simple list of files
+            files_to_show = messages if verbose else messages[:max_files_shown]
+            for msg in files_to_show:
+                tree.add(f"[dim]{msg.file}[/dim]")
+            if not verbose and len(messages) > max_files_shown:
+                tree.add(f"[dim]... and {len(messages) - max_files_shown} more[/dim]")
+
+        console.print(tree)
+        console.print()
 
 
 def truncate_line(line: str, max_len: int = 60) -> str:

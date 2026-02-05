@@ -31,6 +31,9 @@ tests/fixtures/*/site/
 # mkdocs build output
 site/
 
+# mkdocs-output-filter state files
+.mkdocs-output-filter/
+
 # OS
 .DS_Store
 Thumbs.db
