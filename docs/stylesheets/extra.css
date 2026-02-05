@@ -1,0 +1,21 @@
+/* Side-by-side comparison grid */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Red X and green checkmark icons */
+.red {
+  color: #f44336;
+}
+
+.green {
+  color: #4caf50;
+}

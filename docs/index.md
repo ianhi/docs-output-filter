@@ -1,73 +1,86 @@
 # mkdocs-filter
 
-Filter mkdocs build output to show only warnings and errors with nice formatting.
+**Filter mkdocs output to show only what matters: warnings and errors.**
 
-## Why?
+## Before & After
 
-When building large MkDocs sites, the output can be verbose and noisy. `mkdocs-filter` filters the output to show only what matters: warnings, errors, and key build information.
+<div class="grid" markdown>
 
-**Before** (raw mkdocs output):
+**Raw mkdocs output** :material-close:{ .red }
+
 ```
 INFO    -  Cleaning site directory
 INFO    -  Building documentation to directory: /path/to/site
-INFO    -  Doc file 'page1.md' contains a link 'image.png', but the target is not found
-INFO    -  Doc file 'page2.md' contains a link 'other.md', but the target is not found
-WARNING -  markdown_exec: Execution of python code block exited with errors
+INFO    -  Doc file 'page1.md' contains a link...
+WARNING -  markdown_exec: Execution of python
+code block exited with errors
+
 Code block is:
 
   x = 1
   y = 2
-  raise ValueError("INTENTIONAL ERROR")
+  raise ValueError("test error")
 
 Output is:
 
   Traceback (most recent call last):
-    File "<code block: session test; n1>", line 3, in <module>
-      raise ValueError("INTENTIONAL ERROR")
-  ValueError: INTENTIONAL ERROR
+    File "<code block>", line 3, in <module>
+      raise ValueError("test error")
+  ValueError: test error
 
 INFO    -  Documentation built in 1.23 seconds
 ```
 
-**After** (filtered output):
+**Filtered output** :material-check:{ .green }
+
 ```
-⚠ WARNING [markdown_exec] ValueError: INTENTIONAL ERROR
+⚠ WARNING [markdown_exec] ValueError: test error
    📍 session 'test' → line 3
 
-╭────────────────── Code Block ──────────────────╮
-│   1 x = 1                                      │
-│   2 y = 2                                      │
-│   3 raise ValueError("INTENTIONAL ERROR")      │
-╰────────────────────────────────────────────────╯
+╭──────────── Code Block ────────────╮
+│   1 x = 1                          │
+│   2 y = 2                          │
+│   3 raise ValueError("test error") │
+╰────────────────────────────────────╯
 
-────────────────────────────────────────
+────────────────────────────────────
 Summary: 1 warning(s)
 
 Built in 1.23s
+```
 
-Hint: -v for verbose output, --raw for full mkdocs output
+</div>
+
+## Install
+
+```bash
+uv tool install mkdocs-filter
+```
+
+## Use
+
+```bash
+mkdocs build 2>&1 | mkdocs-output-filter
+mkdocs serve --livereload 2>&1 | mkdocs-output-filter
 ```
 
 ## Features
 
-- **Progress spinner** - Shows current build activity while processing
-- **Filtered output** - Only shows warnings and errors, removes noise
-- **Location info** - Shows file, session, and line number for code execution errors
-- **Code blocks** - Displays the failing code with syntax highlighting
-- **Build info** - Shows output directory, server URL (for serve), and build time
-- **Rich formatting** - Color-coded errors vs warnings, nice panels
-- **Streaming mode** - Real-time output for `mkdocs serve` with rebuild detection
-- **Interactive mode** - Toggle between filtered and raw output on-the-fly
+| Feature | Description |
+|---------|-------------|
+| **Filtered output** | Only shows warnings and errors |
+| **Code blocks** | Syntax-highlighted code that caused errors |
+| **Location info** | File, session, and line number |
+| **Streaming mode** | Real-time output for `mkdocs serve` |
+| **Interactive mode** | Toggle raw/filtered with keyboard |
+| **MCP server** | API for AI code assistants |
 
-## Installation
+## Options
 
-```bash
-# Install with uv (recommended)
-uv tool install mkdocs-filter
-
-# Or with pip
-pip install mkdocs-filter
-
-# Or with pipx
-pipx install mkdocs-filter
+```
+-v, --verbose      Show full tracebacks
+-e, --errors-only  Hide warnings, show only errors
+--no-color         Disable colored output
+--raw              Pass through unfiltered
+-i, --interactive  Keyboard toggle mode
 ```
