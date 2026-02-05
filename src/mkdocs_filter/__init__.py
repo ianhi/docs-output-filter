@@ -635,11 +635,16 @@ def run_streaming_mode(console: Console, args: argparse.Namespace) -> int:
     if spinner_active:
         with Live(console=console, refresh_per_second=10, transient=True) as live:
             for line in sys.stdin:
-                # Update spinner with current activity
+                # Update spinner with current activity (include server URL if available)
                 display_line = truncate_line(line)
-                if display_line != current_activity:
+                if display_line != current_activity or processor.build_info.server_url:
                     current_activity = display_line
-                    spinner = Spinner("dots", text=f" {current_activity}", style="cyan")
+                    spinner_text = f" {current_activity}"
+                    if processor.build_info.server_url:
+                        spinner_text += (
+                            f"  [bold green]🌐 {processor.build_info.server_url}[/bold green]"
+                        )
+                    spinner = Spinner("dots", text=spinner_text, style="cyan")
                     live.update(spinner)
 
                 # Detect chunk boundaries to know when to show output
