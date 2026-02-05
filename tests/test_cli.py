@@ -138,17 +138,6 @@ INFO -  Documentation built in 1.23 seconds"""
         assert "/path/to/site" in result.stdout
         assert "1.23" in result.stdout
 
-    def test_shows_server_url(self) -> None:
-        """Should show server URL when serving."""
-        input_text = "INFO -  Serving on http://127.0.0.1:8000/"
-        result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color"],
-            input=input_text,
-            capture_output=True,
-            text=True,
-        )
-        assert "http://127.0.0.1:8000/" in result.stdout
-
     def test_deduplicates_warnings(self) -> None:
         """Should deduplicate similar warnings."""
         input_text = """WARNING -  Same warning
@@ -278,8 +267,7 @@ INFO    -  Documentation built in 0.50 seconds"""
         assert "SECOND ERROR AFTER REBUILD" in result.stdout, (
             "Second error after rebuild should be shown"
         )
-        # Server URL should be shown
-        assert "127.0.0.1:8000" in result.stdout, "Server URL should be shown"
+        # Server URL is now shown in spinner only (not printed output)
         # Rebuild indicator should be shown
         assert "rebuild" in result.stdout.lower() or "file change" in result.stdout.lower(), (
             "Rebuild indicator should be shown"
@@ -348,8 +336,7 @@ INFO    -  Documentation built in 0.50 seconds"""
         # Both errors should appear
         assert "INITIAL_ERROR" in result.stdout, f"Initial error missing:\n{result.stdout}"
         assert "REBUILD_ERROR" in result.stdout, f"Rebuild error missing:\n{result.stdout}"
-        # Server URL should appear
-        assert "127.0.0.1:8000" in result.stdout, f"Server URL missing:\n{result.stdout}"
+        # Server URL is now shown in spinner only (not printed output)
         # Rebuild indicator should appear
         assert "rebuild" in result.stdout.lower() or "file change" in result.stdout.lower()
 

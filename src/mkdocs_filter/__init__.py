@@ -17,6 +17,7 @@ import threading
 import tty
 from collections.abc import Callable
 from enum import Enum
+from pathlib import Path
 from queue import Empty, Queue
 
 from rich.console import Console
@@ -591,6 +592,7 @@ def run_streaming_mode(console: Console, args: argparse.Namespace) -> int:
 
     # Track if we've printed any issues to know if we need a newline
     issues_printed = 0
+    build_output_shown = False  # Track if we've shown output for current build
 
     # Use a spinner while processing, but let processor handle display
     spinner_active = not args.no_progress and not args.no_color
@@ -635,6 +637,12 @@ def run_streaming_mode(console: Console, args: argparse.Namespace) -> int:
     if spinner_active:
         with Live(console=console, refresh_per_second=10, transient=True) as live:
             for line in sys.stdin:
+                # Detect chunk boundaries to know when to show output
+                boundary = detect_chunk_boundary(line, None)
+
+                # Process the line FIRST to extract info like server URL
+                processor.process_line(line)
+
                 # Update spinner with current activity (include server URL if available)
                 display_line = truncate_line(line)
                 if display_line != current_activity or processor.build_info.server_url:
@@ -647,41 +655,66 @@ def run_streaming_mode(console: Console, args: argparse.Namespace) -> int:
                     spinner = Spinner("dots", text=spinner_text, style="cyan")
                     live.update(spinner)
 
-                # Detect chunk boundaries to know when to show output
-                boundary = detect_chunk_boundary(line, None)
-
-                # Process the line
-                processor.process_line(line)
-
-                # When build completes or server starts, show results
+                # When build completes or server starts, show results (but only once per build)
                 # Order: build time, info groups, then warnings/errors (most visible at end)
                 # Server URL is shown in spinner, not printed separately
                 if boundary in (ChunkBoundary.BUILD_COMPLETE, ChunkBoundary.SERVER_STARTED):
-                    live.stop()
-                    print_build_time_inline()
-                    print_info_groups_inline()
-                    print_pending_issues()
-                    live.start()
+                    if not build_output_shown:
+                        build_output_shown = True
+                        live.stop()
+                        print_build_time_inline()
+                        print_info_groups_inline()
+                        print_pending_issues()
+                        # Show MCP tip if --share-state is enabled
+                        if write_state:
+                            state_path = get_state_file_path()
+                            if state_path:
+                                console.print(
+                                    f"[dim]💡 MCP: State shared to {state_path.resolve()}[/dim]"
+                                )
+                            else:
+                                # Fallback to cwd if no project root found
+                                console.print(
+                                    f"[dim]💡 MCP: State shared to {Path.cwd() / '.mkdocs-output-filter' / 'state.json'}[/dim]"
+                                )
+                            console.print()
+                        live.start()
 
-                # On rebuild start, reset issue counter for fresh display
+                # On rebuild start, reset for fresh display
                 elif boundary == ChunkBoundary.REBUILD_STARTED:
                     issues_printed = 0
+                    build_output_shown = False
     else:
         for line in sys.stdin:
             boundary = detect_chunk_boundary(line, None)
             processor.process_line(line)
 
-            # When build completes or server starts, show results
+            # When build completes or server starts, show results (but only once per build)
             # Order: build time, info groups, then warnings/errors (most visible at end)
             if boundary in (ChunkBoundary.BUILD_COMPLETE, ChunkBoundary.SERVER_STARTED):
-                print_build_time_inline()
-                print_info_groups_inline()
-                print_pending_issues()
-                print_server_url_inline()
+                if not build_output_shown:
+                    build_output_shown = True
+                    print_build_time_inline()
+                    print_info_groups_inline()
+                    print_pending_issues()
+                    # Show MCP tip if --share-state is enabled
+                    if write_state:
+                        state_path = get_state_file_path()
+                        if state_path:
+                            console.print(
+                                f"[dim]💡 MCP: State shared to {state_path.resolve()}[/dim]"
+                            )
+                        else:
+                            # Fallback to cwd if no project root found
+                            console.print(
+                                f"[dim]💡 MCP: State shared to {Path.cwd() / '.mkdocs-output-filter' / 'state.json'}[/dim]"
+                            )
+                        console.print()
 
-            # On rebuild start, reset issue counter
+            # On rebuild start, reset for fresh display
             elif boundary == ChunkBoundary.REBUILD_STARTED:
                 issues_printed = 0
+                build_output_shown = False
 
     # Finalize and get results
     all_issues, build_info = processor.finalize()
