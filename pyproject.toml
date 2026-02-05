@@ -64,3 +64,34 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["mkdocs_filter"]
+
+[dependency-groups]
+dev = [
+    "markdown-exec>=1.12.1",
+    "mkdocs>=1.6.1",
+    "mypy>=1.19.1",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.15.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+
+[tool.coverage.run]
+source = ["mkdocs_filter"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true

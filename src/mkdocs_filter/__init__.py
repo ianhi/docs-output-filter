@@ -123,12 +123,14 @@ def parse_markdown_exec_issue(
     """Parse a markdown_exec warning/error block. Returns (issue, end_index)."""
     # Look backwards to find which file was being processed
     file_path = None
-    for j in range(start - 1, max(0, start - 50), -1):
+    for j in range(start - 1, max(-1, start - 50), -1):
         prev_line = lines[j]
+        # Look for verbose mode "Reading: file.md" message (most reliable)
+        if match := re.search(r"DEBUG\s*-\s*Reading:\s*(\S+\.md)", prev_line):
+            file_path = match.group(1)
+            break
         # Look for breadcrumb that mentions the file
-        if match := re.search(
-            r"Generated breadcrumb string:.*\[([^\]]+)\]\(/([^)]+)\)", prev_line
-        ):
+        if match := re.search(r"Generated breadcrumb string:.*\[([^\]]+)\]\(/([^)]+)\)", prev_line):
             potential_file = match.group(2) + ".md"
             file_path = potential_file
             break
@@ -260,9 +262,9 @@ def print_issue(console: Console, issue: Issue, verbose: bool = False) -> None:
         if not verbose:
             code_lines = issue.code.split("\n")
             if len(code_lines) > 10:
-                code_to_show = "  # ... ({} lines above)\n".format(
-                    len(code_lines) - 10
-                ) + "\n".join(code_lines[-10:])
+                code_to_show = f"  # ... ({len(code_lines) - 10} lines above)\n" + "\n".join(
+                    code_lines[-10:]
+                )
 
         code_to_show = dedent_code(code_to_show)
 
@@ -299,9 +301,12 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    mkdocs build 2>&1 | mkdocs-filter
-    mkdocs build 2>&1 | mkdocs-filter -v
+    mkdocs build --verbose 2>&1 | mkdocs-filter
+    mkdocs build --verbose 2>&1 | mkdocs-filter -v
+    mkdocs serve 2>&1 | mkdocs-filter
     mkdocs build 2>&1 | mkdocs-filter --errors-only
+
+Note: Use --verbose with mkdocs to get file paths for code block errors.
         """,
     )
     parser.add_argument(
@@ -418,6 +423,18 @@ Examples:
             hints.append("[dim]-v[/dim] for verbose output")
         hints.append("[dim]--raw[/dim] for full mkdocs output")
         console.print(f"[dim]Hint: {', '.join(hints)}[/dim]")
+
+        # Check if any markdown_exec issues are missing file context
+        # (has session info but no .md file path)
+        missing_file_context = any(
+            i.source == "markdown_exec" and i.file and "session" in i.file and ".md" not in i.file
+            for i in unique_issues
+        )
+        if missing_file_context:
+            console.print(
+                "[dim]Tip: Use [/dim][dim italic]mkdocs build --verbose[/dim italic]"
+                "[dim] to see which file contains code block errors[/dim]"
+            )
 
     return 1 if error_count else 0
 
