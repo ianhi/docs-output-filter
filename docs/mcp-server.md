@@ -8,9 +8,11 @@ The MCP server provides tools for:
 
 - **`get_issues`** - Get current warnings and errors from the last build
 - **`get_issue_details`** - Get detailed information about a specific issue
+- **`get_info`** - Get INFO-level messages (broken links, missing nav entries, etc.)
 - **`rebuild`** - Trigger a new mkdocs build and get updated issues
 - **`get_build_info`** - Get server URL, build directory, and timing
 - **`get_raw_output`** - Get raw mkdocs output for debugging
+- **`fetch_build_log`** - Fetch and process a remote build log (e.g., ReadTheDocs)
 
 ## Setup
 
@@ -159,6 +161,65 @@ Get the raw mkdocs output from the last build.
 | Name | Type | Description |
 |------|------|-------------|
 | `last_n_lines` | `integer` | Number of lines to return (default: 100) |
+
+### `get_info`
+
+Get INFO-level messages like broken links, missing nav entries, and absolute links.
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `category` | `string` | Filter by category: `"all"`, `"broken_link"`, `"absolute_link"`, `"unrecognized_link"`, `"missing_nav"`, `"no_git_logs"` |
+| `grouped` | `boolean` | Group messages by category (default: true) |
+
+**Returns:**
+
+```json
+{
+  "info_messages": {
+    "broken_link": [
+      {"file": "docs/guide.md", "target": "missing.md", "suggestion": null}
+    ],
+    "missing_nav": [
+      {"file": "docs/hidden.md", "target": null, "suggestion": null}
+    ]
+  },
+  "count": 2
+}
+```
+
+### `fetch_build_log`
+
+Fetch and process a remote build log from a URL (e.g., ReadTheDocs CI builds).
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `url` | `string` | URL of the build log to fetch (required) |
+| `verbose` | `boolean` | Include full code blocks and tracebacks |
+
+**Returns:**
+
+```json
+{
+  "url": "https://readthedocs.org/api/v3/projects/myproject/builds/123/",
+  "lines_processed": 500,
+  "total_issues": 2,
+  "errors": 1,
+  "warnings": 1,
+  "issues": [...],
+  "info_messages": {...},
+  "build_time": "45.2"
+}
+```
+
+**Supported URL formats:**
+
+- ReadTheDocs API v3 build endpoints (automatically extracts log from JSON)
+- Plain text log files
+- JSON with common log fields (`output`, `log`, `build_log`, `stdout`, `stderr`)
 
 ## Workflow Example
 

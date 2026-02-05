@@ -460,14 +460,22 @@ def print_info_groups(
         console.print()
 
 
-def truncate_line(line: str, max_len: int = 60) -> str:
-    """Truncate line for display, keeping useful part."""
+def truncate_line(line: str, max_len: int = 60, pad: bool = True) -> str:
+    """Truncate line for display, keeping useful part.
+
+    Args:
+        line: The line to truncate
+        max_len: Maximum length (default 60)
+        pad: If True, pad shorter lines to max_len for consistent width
+    """
     line = line.strip()
     line = re.sub(r"^\[stderr\]\s*", "", line)
     line = re.sub(r"^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2},\d+\s*-\s*", "", line)
     line = re.sub(r"^[\w.]+\s*-\s*(INFO|WARNING|ERROR)\s*-\s*", "", line)
     if len(line) > max_len:
         return line[:max_len] + "..."
+    if pad:
+        return line.ljust(max_len)
     return line
 
 

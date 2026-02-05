@@ -30,6 +30,7 @@ mkdocs serve --livereload 2>&1 | mkdocs-output-filter
 | `--batch` | Force batch mode (process all input then display) |
 | `-i, --interactive` | Interactive mode with keyboard controls |
 | `--share-state` | Write issues to state file for MCP server |
+| `--url URL` | Fetch and process a remote build log (e.g., ReadTheDocs) |
 | `--version` | Show version number |
 
 ## Modes
@@ -110,6 +111,26 @@ Sometimes you need the full mkdocs output:
 ```bash
 mkdocs build 2>&1 | mkdocs-output-filter --raw
 ```
+
+### Remote Build Logs
+
+Fetch and process build logs from remote CI/CD systems like ReadTheDocs:
+
+```bash
+# ReadTheDocs API v3 build endpoint
+mkdocs-output-filter --url https://readthedocs.org/api/v3/projects/myproject/builds/123/
+
+# Any text log file
+mkdocs-output-filter --url https://example.com/build.log
+```
+
+This is useful for debugging failed builds on CI services without copying logs manually.
+
+**Supported formats:**
+
+- ReadTheDocs API v3 build endpoints (automatically extracts log from JSON)
+- Plain text log files
+- JSON with common log fields (`output`, `log`, `logs`, `build_log`, `stdout`, `stderr`)
 
 ### With AI Code Assistants
 
