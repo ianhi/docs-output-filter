@@ -23,10 +23,21 @@ mkdocs-output-filter processes mkdocs build output and:
 INFO    -  Building documentation...
 INFO    -  Cleaning site directory
 INFO    -  Log level set to INFO
+INFO    -  Building documentation to directory: /project/site
 INFO    -  MERMAID2  - Initialization arguments: {}
 INFO    -  Generating index pages...
+INFO    -  Reading page 'index.md'
+INFO    -  Reading page 'guide/getting-started.md'
+INFO    -  Reading page 'guide/configuration.md'
+INFO    -  Reading page 'api/reference.md'
+INFO    -  Reading page 'api/models.md'
+INFO    -  Copying static files from theme: material
+INFO    -  Copying 'assets/stylesheets/extra.css'
+INFO    -  Copying 'assets/javascripts/extra.js'
 [git-revision-date-localized-plugin] 'docs/new-page.md' has no git logs
 [git-revision-date-localized-plugin] 'docs/draft.md' has no git logs
+[git-revision-date-localized-plugin] 'docs/changelog.md' has no git logs
+INFO    -  Executing code blocks with markdown_exec...
 WARNING -  markdown_exec: Execution of python code block exited with errors
 
 Code block is:
@@ -43,7 +54,14 @@ Output is:
   ValueError: INTENTIONAL TEST ERROR
 
 WARNING -  [git-revision-date-localized-plugin] Unable to read git logs
+INFO    -  Rendering 'index.md'
+INFO    -  Rendering 'guide/getting-started.md'
+INFO    -  Rendering 'guide/configuration.md'
+INFO    -  Rendering 'api/reference.md'
+INFO    -  Rendering 'api/models.md'
 INFO    -  Building search index...
+INFO    -  Writing 'sitemap.xml'
+INFO    -  Writing 'search/search_index.json'
 INFO    -  Documentation built in 12.34 seconds
 ```
 
@@ -69,6 +87,8 @@ INFO    -  Documentation built in 12.34 seconds
 <span class="dim">────────────────────────────────────────</span>
 Summary: <span class="yellow">2 warning(s)</span>
 
+<span class="green-bold">🌐 Server:</span> http://127.0.0.1:8000/
+<span class="blue-bold">📁 Output:</span> /project/site
 <span class="dim">Built in </span><span class="cyan">12.34</span><span class="dim">s</span>
 </div>
 

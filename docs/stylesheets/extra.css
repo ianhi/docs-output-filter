@@ -88,6 +88,8 @@
 .terminal .yellow { color: #e5c07b; font-weight: bold; }
 .terminal .red { color: #e06c75; }
 .terminal .green { color: #98c379; }
+.terminal .green-bold { color: #98c379; font-weight: bold; }
+.terminal .blue-bold { color: #61afef; font-weight: bold; }
 .terminal .cyan { color: #56b6c2; }
 .terminal .cyan-bold { color: #56b6c2; font-weight: bold; }
 .terminal .dim { color: #5c6370; }
