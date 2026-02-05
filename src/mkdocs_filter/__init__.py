@@ -144,11 +144,17 @@ class StreamingProcessor:
         if "Serving on http" in line:
             self.in_serve_mode = True
 
-        # Detect server errors (OSError, exceptions, tracebacks)
+        # Detect server errors (OSError, etc.) - only specific system errors
+        # NOT generic errors that might be part of mkdocs output
+        stripped = line.strip()
         if (
-            re.match(r"^(OSError|IOError|Exception|Error|Traceback):", line)
+            re.match(r"^OSError:", stripped)
+            or re.match(r"^IOError:", stripped)
+            or re.match(r"^PermissionError:", stripped)
+            or re.match(r"^ConnectionError:", stripped)
             or "Address already in use" in line
-            or line.strip().startswith("Traceback (most recent call last)")
+            or "Permission denied" in line
+            and "OSError" in line
         ):
             self.saw_server_error = True
         # Capture error context once we're in error mode
@@ -607,13 +613,17 @@ def run_streaming_mode(console: Console, args: argparse.Namespace) -> int:
             issues_printed += 1
         pending_issues.clear()
 
-    def print_build_info_inline() -> None:
-        """Print server URL and build info when build completes."""
-        if processor.build_info.server_url:
-            console.print(f"[bold green]🌐 Server:[/bold green] {processor.build_info.server_url}")
+    def print_build_time_inline() -> None:
+        """Print build time when build completes."""
         if processor.build_info.build_time:
             console.print(f"[dim]Built in {processor.build_info.build_time}s[/dim]")
         console.print()
+
+    def print_server_url_inline() -> None:
+        """Print server URL at the very end for easy visibility."""
+        if processor.build_info.server_url:
+            console.print(f"[bold green]🌐 Server:[/bold green] {processor.build_info.server_url}")
+            console.print()
 
     def print_info_groups_inline() -> None:
         """Print grouped INFO messages when build completes."""
@@ -641,9 +651,10 @@ def run_streaming_mode(console: Console, args: argparse.Namespace) -> int:
                 # When build completes or server starts, show results
                 if boundary in (ChunkBoundary.BUILD_COMPLETE, ChunkBoundary.SERVER_STARTED):
                     live.stop()
-                    print_build_info_inline()
+                    print_build_time_inline()
                     print_pending_issues()
                     print_info_groups_inline()
+                    print_server_url_inline()
                     live.start()
 
                 # On rebuild start, reset issue counter for fresh display
@@ -656,9 +667,10 @@ def run_streaming_mode(console: Console, args: argparse.Namespace) -> int:
 
             # When build completes or server starts, show results
             if boundary in (ChunkBoundary.BUILD_COMPLETE, ChunkBoundary.SERVER_STARTED):
-                print_build_info_inline()
+                print_build_time_inline()
                 print_pending_issues()
                 print_info_groups_inline()
+                print_server_url_inline()
 
             # On rebuild start, reset issue counter
             elif boundary == ChunkBoundary.REBUILD_STARTED:
