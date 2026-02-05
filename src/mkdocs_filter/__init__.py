@@ -197,6 +197,8 @@ class StreamingProcessor:
         self.console.print()
         self.console.print("[dim]─── File change detected, rebuilding... ───[/dim]")
         self.console.print()
+        # Preserve server URL across rebuilds (it doesn't change during mkdocs serve)
+        preserved_server_url = self.build_info.server_url
         # Clear state for new build
         self.buffer.clear()
         self.raw_buffer.clear()
@@ -204,7 +206,7 @@ class StreamingProcessor:
         self.all_info_messages.clear()
         self.seen_issues.clear()
         self.seen_info.clear()
-        self.build_info = BuildInfo()
+        self.build_info = BuildInfo(server_url=preserved_server_url)
 
     def _write_state_file(self) -> None:
         """Write current state to the state file for MCP server access."""
