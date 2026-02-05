@@ -37,6 +37,15 @@
   max-height: 450px;
   min-height: 450px;
   flex: none;
+  /* Same dark background for both panels */
+  background: #282c34 !important;
+  color: #abb2bf;
+  border-radius: 0 0 0.25rem 0.25rem;
+}
+
+.comparison-item pre code {
+  background: transparent !important;
+  color: #abb2bf;
 }
 
 .comparison-item code {
@@ -52,31 +61,18 @@
 }
 
 .comparison-header.bad {
-  background: #ffebee;
-  color: #c62828;
+  background: #e06c75;
+  color: #fff;
 }
 
 .comparison-header.good {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #98c379;
+  color: #282c34;
 }
 
-[data-md-color-scheme="slate"] .comparison-header.bad {
-  background: #4a1c1c;
-  color: #ef9a9a;
-}
-
-[data-md-color-scheme="slate"] .comparison-header.good {
-  background: #1b3d1b;
-  color: #a5d6a7;
-}
-
-/* Terminal styling - matches Rich default dark theme */
+/* Terminal styling */
 .terminal {
-  background: #282c34;
-  color: #abb2bf;
   padding: 1rem;
-  border-radius: 0 0 0.25rem 0.25rem;
   font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
   white-space: pre;
 }
