@@ -651,9 +651,9 @@ def run_streaming_mode(console: Console, args: argparse.Namespace) -> int:
                 # When build completes or server starts, show results
                 if boundary in (ChunkBoundary.BUILD_COMPLETE, ChunkBoundary.SERVER_STARTED):
                     live.stop()
-                    print_build_time_inline()
                     print_pending_issues()
                     print_info_groups_inline()
+                    print_build_time_inline()
                     print_server_url_inline()
                     live.start()
 
@@ -667,9 +667,9 @@ def run_streaming_mode(console: Console, args: argparse.Namespace) -> int:
 
             # When build completes or server starts, show results
             if boundary in (ChunkBoundary.BUILD_COMPLETE, ChunkBoundary.SERVER_STARTED):
-                print_build_time_inline()
                 print_pending_issues()
                 print_info_groups_inline()
+                print_build_time_inline()
                 print_server_url_inline()
 
             # On rebuild start, reset issue counter
@@ -683,6 +683,8 @@ def run_streaming_mode(console: Console, args: argparse.Namespace) -> int:
     if pending_issues:
         print_pending_issues()
         print_info_groups_inline()
+        print_build_time_inline()
+        print_server_url_inline()
 
     # If we never saw valid mkdocs output, something went wrong - show raw output
     if not processor.saw_mkdocs_output and processor.raw_buffer:
