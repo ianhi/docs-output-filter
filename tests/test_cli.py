@@ -275,15 +275,15 @@ INFO    -  Documentation built in 0.50 seconds"""
         )
         # Both errors must appear in output
         assert "FIRST ERROR" in result.stdout, "First error should be shown"
-        assert (
-            "SECOND ERROR AFTER REBUILD" in result.stdout
-        ), "Second error after rebuild should be shown"
+        assert "SECOND ERROR AFTER REBUILD" in result.stdout, (
+            "Second error after rebuild should be shown"
+        )
         # Server URL should be shown
         assert "127.0.0.1:8000" in result.stdout, "Server URL should be shown"
         # Rebuild indicator should be shown
-        assert (
-            "rebuild" in result.stdout.lower() or "file change" in result.stdout.lower()
-        ), "Rebuild indicator should be shown"
+        assert "rebuild" in result.stdout.lower() or "file change" in result.stdout.lower(), (
+            "Rebuild indicator should be shown"
+        )
 
     def test_clears_issues_on_rebuild(self) -> None:
         """Should show only the latest build's issues after rebuild, not accumulate."""

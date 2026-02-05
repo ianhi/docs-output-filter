@@ -235,9 +235,9 @@ class TestMkdocsServeRebuild:
             initial_output = read_output()
 
             # Verify initial error is shown
-            assert (
-                "ValueError" in initial_output or "INTENTIONAL TEST ERROR" in initial_output
-            ), f"Initial build error not shown. Output:\n{initial_output}"
+            assert "ValueError" in initial_output or "INTENTIONAL TEST ERROR" in initial_output, (
+                f"Initial build error not shown. Output:\n{initial_output}"
+            )
 
             # Modify file to trigger rebuild (change ValueError to RuntimeError)
             new_content = original_content.replace("ValueError", "RuntimeError")
@@ -249,14 +249,14 @@ class TestMkdocsServeRebuild:
 
             # Verify rebuild error is shown (RuntimeError)
             full_output = initial_output + rebuild_output
-            assert (
-                "RuntimeError" in full_output
-            ), f"Rebuild error not detected. Full output:\n{full_output}"
+            assert "RuntimeError" in full_output, (
+                f"Rebuild error not detected. Full output:\n{full_output}"
+            )
 
             # Verify file change was detected
-            assert (
-                "rebuild" in full_output.lower() or "file change" in full_output.lower()
-            ), f"File change indicator not shown. Full output:\n{full_output}"
+            assert "rebuild" in full_output.lower() or "file change" in full_output.lower(), (
+                f"File change indicator not shown. Full output:\n{full_output}"
+            )
 
         finally:
             # Cleanup
