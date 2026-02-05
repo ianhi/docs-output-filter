@@ -117,8 +117,8 @@ mkdocs build 2>&1 | mkdocs-output-filter --raw
 Fetch and process build logs from remote CI/CD systems like ReadTheDocs:
 
 ```bash
-# ReadTheDocs API v3 build endpoint
-mkdocs-output-filter --url https://readthedocs.org/api/v3/projects/myproject/builds/123/
+# ReadTheDocs - just paste the build URL from your browser
+mkdocs-output-filter --url https://app.readthedocs.org/projects/myproject/builds/12345/
 
 # Any text log file
 mkdocs-output-filter --url https://example.com/build.log
@@ -128,7 +128,7 @@ This is useful for debugging failed builds on CI services without copying logs m
 
 **Supported formats:**
 
-- ReadTheDocs API v3 build endpoints (automatically extracts log from JSON)
+- **ReadTheDocs** - paste the web UI URL directly, auto-transforms to raw log
 - Plain text log files
 - JSON with common log fields (`output`, `log`, `logs`, `build_log`, `stdout`, `stderr`)
 

@@ -217,7 +217,7 @@ Fetch and process a remote build log from a URL (e.g., ReadTheDocs CI builds).
 
 **Supported URL formats:**
 
-- ReadTheDocs API v3 build endpoints (automatically extracts log from JSON)
+- **ReadTheDocs** - paste the web UI URL directly (e.g., `https://app.readthedocs.org/projects/foo/builds/123/`)
 - Plain text log files
 - JSON with common log fields (`output`, `log`, `build_log`, `stdout`, `stderr`)
 
