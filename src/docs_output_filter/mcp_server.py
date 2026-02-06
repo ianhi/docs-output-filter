@@ -105,7 +105,7 @@ class DocsFilterServer:
         return [
             Tool(
                 name="get_issues",
-                description="Get current warnings and errors from the last documentation build",
+                description="Get current warnings and errors from the last documentation build. Also returns info_summary with counts of INFO-level messages (broken links, missing nav, etc.) — use get_info for details.",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -304,12 +304,19 @@ class DocsFilterServer:
         error_count = sum(1 for i in issues if i.level == Level.ERROR)
         warning_count = sum(1 for i in issues if i.level == Level.WARNING)
 
-        response = {
+        response: dict[str, Any] = {
             "total": len(issue_dicts),
             "errors": error_count,
             "warnings": warning_count,
             "issues": issue_dicts,
         }
+
+        # Include INFO message summary so agent knows they exist
+        if self.info_messages:
+            groups = group_info_messages(self.info_messages)
+            info_summary = {cat.value: len(msgs) for cat, msgs in groups.items()}
+            info_summary["total"] = len(self.info_messages)
+            response["info_summary"] = info_summary
 
         return [TextContent(type="text", text=json.dumps(response, indent=2))]
 
