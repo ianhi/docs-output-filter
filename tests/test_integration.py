@@ -205,7 +205,7 @@ class TestMkdocsServeRebuild:
 
             # Start filter reading from mkdocs
             filter_proc = subprocess.Popen(
-                [sys.executable, "-m", "mkdocs_filter", "--streaming", "--no-color"],
+                [sys.executable, "-m", "docs_output_filter", "--streaming", "--no-color"],
                 stdin=mkdocs_proc.stdout,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

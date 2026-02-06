@@ -1,0 +1,37 @@
+[sphinx-autobuild] Starting initial build
+[sphinx-autobuild] > python -m sphinx build ./ _build/html -b html
+Running Sphinx v7.4.7
+loading translations [en]... done
+[etoc] Changing master_doc to 'intro'
+[etoc] Excluded 15 extra file(s) not in toc
+checking bibtex cache... out of date
+parsing bibtex file /Users/ian/Documents/dev/xarray-tutorial/reference/references.bib... parsed 2 entries
+myst v3.0.1: MdParserConfig(commonmark_only=False, gfm_only=False, enable_extensions={'dollarmath', 'linkify', 'substitution', 'colon_fence', 'html_image'}, disable_syntax=[], all_links_external=False, links_external_new_tab=False, url_schemes=('mailto', 'http', 'https'), ref_domains=None, fence_as_directive=set(), number_code_blocks=[], title_to_header=False, heading_anchors=0, heading_slug_func=None, html_meta={}, footnote_transition=True, words_per_minute=200, substitutions={xarray_homepage: ..., xarray_docs: ..., xarray_repo: ..., xarray_forum: ...}, linkify_fuzzy_links=True, dmath_allow_labels=True, dmath_allow_space=True, dmath_allow_digits=True, dmath_double_inline=False, update_mathjax=True, mathjax_classes='tex2jax_process|mathjax_process|math|output_area', enable_checkboxes=False, suppress_warnings=[], highlight_code_blocks=True)
+myst-nb v1.2.0: NbParserConfig(custom_formats={}, metadata_key='mystnb', cell_metadata_key='mystnb', kernel_rgx_aliases={}, eval_name_regex='^[a-zA-Z_][a-zA-Z0-9_]*', execution_mode='cache', execution_cache_path='', execution_excludepatterns=[], execution_timeout=300, execution_in_temp=False, execution_allow_errors=False, execution_raise_on_error=False, execution_show_tb=False, merge_streams=False, render_plugin='default', remove_code_source=False, remove_code_outputs=False, code_prompt_show='Show code cell {type}', code_prompt_hide='Hide code cell {type}', number_source_lines=False, output_stderr='show', render_text_lexer='myst-ansi', render_error_lexer='ipythontb', render_image_options={}, render_figure_options={}, render_markdown_format='commonmark', output_folder='build', append_css=True, metadata_to_fm=False)
+Using jupyter-cache at: /Users/ian/Documents/dev/xarray-tutorial/_build/.jupyter_cache
+loading intersphinx inventory 'xarray' from https://docs.xarray.dev/en/stable/objects.inv...
+loading intersphinx inventory 'numpy' from https://numpy.org/doc/stable/objects.inv...
+loading intersphinx inventory 'pandas' from https://pandas.pydata.org/docs/objects.inv...
+building [mo]: targets for 0 po files that are out of date
+writing output...
+building [html]: targets for 75 source files that are out of date
+updating environment: [new config] 75 added, 0 changed, 0 removed
+/Users/ian/Documents/dev/xarray-tutorial/intermediate/xarray_and_dask.ipynb: Executing notebook using local CWD [mystnb]
+reading sources... [100%] workshops/thinking-like-xarray/README
+/Users/ian/Documents/dev/xarray-tutorial/intermediate/xarray_and_dask.ipynb: WARNING: Executing notebook failed: CellExecutionError [mystnb.exec]
+/Users/ian/Documents/dev/xarray-tutorial/intermediate/xarray_and_dask.ipynb: WARNING: Notebook exception traceback saved in: /Users/ian/Documents/dev/xarray-tutorial/_build/html/reports/intermediate/xarray_and_dask.err.log [mystnb.exec]
+looking for now-outdated files... none found
+pickling environment... done
+checking consistency... done
+preparing documents... done
+copying assets... done
+writing output... [100%] workshops/thinking-like-xarray/README
+generating indices... genindex done
+writing additional pages... search done
+copying images... [100%] _build/jupyter_execute/b5a7572c.png
+dumping search index in English (code: en)... done
+dumping object inventory... done
+Writing redirects...
+The HTML pages are in /Users/ian/Documents/dev/xarray-tutorial/_build/html.
+build succeeded, 2 warnings.
+[sphinx-autobuild] Serving on http://127.0.0.1:8000

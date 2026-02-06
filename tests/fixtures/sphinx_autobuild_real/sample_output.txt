@@ -1,0 +1,49 @@
+[sphinx-autobuild] Starting initial build
+[sphinx-autobuild] > python -m sphinx build docs docs/_build/html
+Running Sphinx v9.1.0
+loading translations [en]... done
+loading pickled environment... The configuration has changed (6 options: 'html_css_files', 'html_permalinks_icon', 'html_sourcelink_suffix', 'html_static_path', 'html_theme_options', ...)
+done
+myst v5.0.0: MdParserConfig(commonmark_only=False, gfm_only=False, enable_extensions=set(), disable_syntax=[], all_links_external=False, links_external_new_tab=False, url_schemes=('http', 'https', 'mailto', 'ftp'), ref_domains=None, fence_as_directive=set(), number_code_blocks=[], title_to_header=False, heading_anchors=0, heading_slug_func=None, html_meta={}, footnote_sort=True, footnote_transition=True, words_per_minute=200, substitutions={}, linkify_fuzzy_links=True, dmath_allow_labels=True, dmath_allow_space=True, dmath_allow_digits=True, dmath_double_inline=False, update_mathjax=True, mathjax_classes='tex2jax_process|mathjax_process|math|output_area', enable_checkboxes=False, suppress_warnings=[], highlight_code_blocks=True)
+myst-nb v1.3.0: NbParserConfig(custom_formats={}, metadata_key='mystnb', cell_metadata_key='mystnb', kernel_rgx_aliases={}, eval_name_regex='^[a-zA-Z_][a-zA-Z0-9_]*$', execution_mode='cache', execution_cache_path='', execution_excludepatterns=['*cfinterval*'], execution_timeout=30, execution_in_temp=False, execution_allow_errors=False, execution_raise_on_error=True, execution_show_tb=True, merge_streams=False, render_plugin='default', remove_code_source=False, remove_code_outputs=False, scroll_outputs=False, code_prompt_show='Show code cell {type}', code_prompt_hide='Hide code cell {type}', number_source_lines=False, output_stderr='show', render_text_lexer='myst-ansi', render_error_lexer='ipythontb', render_image_options={}, render_figure_options={}, render_markdown_format='commonmark', output_folder='build', append_css=True, metadata_to_fm=False)
+Using jupyter-cache at: /Users/ian/Documents/dev/indexes/xarray-indexes/docs/_build/.jupyter_cache
+building [mo]: targets for 0 po files that are out of date
+writing output...
+building [html]: targets for 0 source files that are out of date
+updating environment: 0 added, 1 changed, 0 removed
+/Users/ian/Documents/dev/indexes/xarray-indexes/.venv/lib/python3.12/site-packages/myst_nb/sphinx_.py:73: RemovedInSphinx10Warning: 'myst_nb.sphinx_.Parser.env' is deprecated. Check CHANGES for Sphinx API modifications.
+  assert self.env is not None, "env not set"
+/Users/ian/Documents/dev/indexes/xarray-indexes/.venv/lib/python3.12/site-packages/myst_nb/sphinx_.py:74: RemovedInSphinx10Warning: 'myst_nb.sphinx_.Parser.env' is deprecated. Check CHANGES for Sphinx API modifications.
+  document_path = self.env.doc2path(self.env.docname)
+/Users/ian/Documents/dev/indexes/xarray-indexes/.venv/lib/python3.12/site-packages/myst_nb/sphinx_.py:80: RemovedInSphinx10Warning: 'myst_nb.sphinx_.Parser.env' is deprecated. Check CHANGES for Sphinx API modifications.
+  md_config: MdParserConfig = self.env.myst_config
+/Users/ian/Documents/dev/indexes/xarray-indexes/.venv/lib/python3.12/site-packages/myst_nb/sphinx_.py:83: RemovedInSphinx10Warning: 'myst_nb.sphinx_.Parser.env' is deprecated. Check CHANGES for Sphinx API modifications.
+  nb_config: NbParserConfig = self.env.mystnb_config
+
+/Users/ian/Documents/dev/indexes/xarray-indexes/docs/index.md:100: WARNING: toctree contains reference to nonexisting document 'builtin/cfinterval' [toc.not_readable]
+looking for now-outdated files... none found
+pickling environment... done
+checking consistency... done
+preparing documents... done
+copying assets...
+copying static files...
+Writing evaluated template result to /Users/ian/Documents/dev/indexes/xarray-indexes/docs/_build/html/_static/basic.css
+Writing evaluated template result to /Users/ian/Documents/dev/indexes/xarray-indexes/docs/_build/html/_static/language_data.js
+Writing evaluated template result to /Users/ian/Documents/dev/indexes/xarray-indexes/docs/_build/html/_static/documentation_options.js
+Writing evaluated template result to /Users/ian/Documents/dev/indexes/xarray-indexes/docs/_build/html/_static/copybutton.js
+copying static files: done
+copying extra files...
+copying extra files: done
+copying assets: done
+writing output... [100%] index
+generating indices... genindex done
+highlighting module code...
+writing additional pages... search done
+copying images... [100%] _static/figs/xarray-dataset-diagram-new.png
+dumping search index in English (code: en)... done
+dumping object inventory... done
+build succeeded, 1 warning.
+
+The HTML pages are in docs/_build/html.
+[sphinx-autobuild] Serving on http://127.0.0.1:8000
+[sphinx-autobuild] Waiting to detect changes...

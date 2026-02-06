@@ -1,4 +1,4 @@
-"""Pytest configuration and fixtures for mkdocs-output-filter tests."""
+"""Pytest configuration and fixtures for docs-output-filter tests."""
 
 import subprocess
 from pathlib import Path
@@ -38,6 +38,24 @@ def multiple_errors_dir(fixtures_dir: Path) -> Path:
     return fixtures_dir / "multiple_errors"
 
 
+@pytest.fixture
+def sphinx_warnings_output(fixtures_dir: Path) -> str:
+    """Return sample Sphinx output with warnings."""
+    return (fixtures_dir / "sphinx_warnings" / "sample_output.txt").read_text()
+
+
+@pytest.fixture
+def sphinx_errors_output(fixtures_dir: Path) -> str:
+    """Return sample Sphinx output with errors."""
+    return (fixtures_dir / "sphinx_errors" / "sample_output.txt").read_text()
+
+
+@pytest.fixture
+def sphinx_autobuild_output(fixtures_dir: Path) -> str:
+    """Return sample sphinx-autobuild output."""
+    return (fixtures_dir / "sphinx_autobuild" / "sample_output.txt").read_text()
+
+
 def run_mkdocs_build(site_dir: Path, verbose: bool = False) -> str:
     """Run mkdocs build in the given directory and return stdout+stderr."""
     cmd = ["mkdocs", "build", "--clean"]
@@ -53,9 +71,9 @@ def run_mkdocs_build(site_dir: Path, verbose: bool = False) -> str:
     return result.stdout + result.stderr
 
 
-def run_mkdocs_filter(input_text: str, *args: str) -> tuple[str, int]:
-    """Run mkdocs-output-filter with the given input and return (output, exit_code)."""
-    cmd = ["python", "-m", "mkdocs_filter", "--no-progress", "--no-color", *args]
+def run_filter(input_text: str, *args: str) -> tuple[str, int]:
+    """Run docs-output-filter with the given input and return (output, exit_code)."""
+    cmd = ["python", "-m", "docs_output_filter", "--no-progress", "--no-color", *args]
     result = subprocess.run(
         cmd,
         input=input_text,
@@ -65,6 +83,10 @@ def run_mkdocs_filter(input_text: str, *args: str) -> tuple[str, int]:
     return result.stdout + result.stderr, result.returncode
 
 
+# Keep old name for backward compat in tests
+run_mkdocs_filter = run_filter
+
+
 @pytest.fixture
 def run_build():
     """Fixture that provides a function to run mkdocs build."""
@@ -72,6 +94,6 @@ def run_build():
 
 
 @pytest.fixture
-def run_filter():
-    """Fixture that provides a function to run mkdocs-output-filter."""
-    return run_mkdocs_filter
+def run_filter_fixture():
+    """Fixture that provides a function to run docs-output-filter."""
+    return run_filter

@@ -10,7 +10,7 @@ class TestCLI:
     def test_version_flag(self) -> None:
         """--version should print version and exit."""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--version"],
+            [sys.executable, "-m", "docs_output_filter", "--version"],
             capture_output=True,
             text=True,
         )
@@ -20,18 +20,17 @@ class TestCLI:
     def test_help_flag(self) -> None:
         """--help should print help and exit."""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--help"],
+            [sys.executable, "-m", "docs_output_filter", "--help"],
             capture_output=True,
             text=True,
         )
         assert result.returncode == 0
-        assert "mkdocs" in result.stdout.lower()
-        assert "filter" in result.stdout.lower()
+        assert "filter" in result.stdout.lower() or "documentation" in result.stdout.lower()
 
     def test_no_input_exits_cleanly(self) -> None:
         """Should exit cleanly with no input."""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress"],
             input="",
             capture_output=True,
             text=True,
@@ -43,7 +42,7 @@ class TestCLI:
         """Should process a simple warning."""
         input_text = "WARNING -  Test warning message"
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress", "--no-color"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -55,7 +54,7 @@ class TestCLI:
         """Should process a simple error and return exit code 1."""
         input_text = "ERROR -  Test error message"
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress", "--no-color"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -68,7 +67,7 @@ class TestCLI:
         """--raw should pass through input unchanged."""
         input_text = "INFO -  This should pass through\nDEBUG -  So should this"
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--raw"],
+            [sys.executable, "-m", "docs_output_filter", "--raw"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -81,7 +80,14 @@ class TestCLI:
         """--errors-only should only show errors."""
         input_text = "WARNING -  A warning\nERROR -  An error"
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color", "--errors-only"],
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                "--errors-only",
+            ],
             input=input_text,
             capture_output=True,
             text=True,
@@ -106,7 +112,7 @@ Output is:
 
 INFO -  Done"""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color", "-v"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress", "--no-color", "-v"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -117,7 +123,7 @@ INFO -  Done"""
         """--no-color should disable ANSI escape codes."""
         input_text = "WARNING -  Test warning"
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress", "--no-color"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -130,7 +136,7 @@ INFO -  Done"""
         input_text = """INFO -  Building documentation to directory: /path/to/site
 INFO -  Documentation built in 1.23 seconds"""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress", "--no-color"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -144,7 +150,7 @@ INFO -  Documentation built in 1.23 seconds"""
 WARNING -  Same warning
 WARNING -  Same warning"""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress", "--no-color"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -158,7 +164,7 @@ WARNING -  Same warning"""
 WARNING -  Warning 2
 ERROR -  Error 1"""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress", "--no-color"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -170,7 +176,7 @@ ERROR -  Error 1"""
         """Should show hint about verbose flag when there are issues."""
         input_text = "WARNING -  A warning"
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress", "--no-color"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -188,7 +194,14 @@ class TestStreamingMode:
 WARNING -  Test warning
 INFO -  Documentation built in 1.00 seconds"""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color", "--streaming"],
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                "--streaming",
+            ],
             input=input_text,
             capture_output=True,
             text=True,
@@ -203,7 +216,7 @@ INFO -  Documentation built in 1.00 seconds"""
 WARNING -  Test warning
 INFO -  Documentation built in 1.00 seconds"""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color", "--batch"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress", "--no-color", "--batch"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -219,7 +232,14 @@ INFO -  More building...
 WARNING -  Second warning
 INFO -  Documentation built in 1.00 seconds"""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color", "--streaming"],
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                "--streaming",
+            ],
             input=input_text,
             capture_output=True,
             text=True,
@@ -257,7 +277,7 @@ Output is:
 
 INFO    -  Documentation built in 0.50 seconds"""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress", "--no-color"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -284,7 +304,7 @@ INFO    -  Building documentation...
 WARNING -  New warning after fix
 INFO    -  Documentation built in 0.50 seconds"""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color"],
+            [sys.executable, "-m", "docs_output_filter", "--no-progress", "--no-color"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -327,7 +347,14 @@ Output is:
 INFO    -  Documentation built in 0.50 seconds"""
 
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--no-progress", "--no-color", "--streaming"],
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                "--streaming",
+            ],
             input=input_text,
             capture_output=True,
             text=True,
@@ -347,7 +374,7 @@ class TestInteractiveMode:
     def test_interactive_help_shows_flag(self) -> None:
         """Help output should mention interactive flag."""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--help"],
+            [sys.executable, "-m", "docs_output_filter", "--help"],
             capture_output=True,
             text=True,
         )
@@ -360,7 +387,7 @@ class TestInteractiveMode:
 WARNING -  Test warning
 INFO -  Documentation built in 1.00 seconds"""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "-i", "--no-progress", "--no-color"],
+            [sys.executable, "-m", "docs_output_filter", "-i", "--no-progress", "--no-color"],
             input=input_text,
             capture_output=True,
             text=True,
@@ -369,22 +396,238 @@ INFO -  Documentation built in 1.00 seconds"""
         assert "WARNING" in result.stdout or "warning" in result.stdout.lower()
 
 
+class TestWrapMode:
+    """Tests for wrapper mode (docs-output-filter -- command)."""
+
+    def test_wrap_mode_captures_output(self) -> None:
+        """Wrapper mode should capture command output and filter it."""
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                "--",
+                sys.executable,
+                "-c",
+                'print("WARNING -  Test warning from wrapped command")\n'
+                'print("INFO -  Documentation built in 1.00 seconds")',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert "WARNING" in result.stdout
+        assert "Test warning from wrapped command" in result.stdout
+
+    def test_wrap_mode_captures_stderr(self) -> None:
+        """Wrapper mode should capture both stdout and stderr."""
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                "--",
+                sys.executable,
+                "-c",
+                "import sys\n"
+                'print("WARNING -  stderr warning", file=sys.stderr)\n'
+                'print("INFO -  Documentation built in 1.00 seconds")',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert "WARNING" in result.stdout
+        assert "stderr warning" in result.stdout
+
+    def test_wrap_mode_sets_pythonunbuffered(self) -> None:
+        """Wrapper mode should set PYTHONUNBUFFERED=1 in subprocess env."""
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                "--",
+                sys.executable,
+                "-c",
+                "import os\n"
+                'unbuf = os.environ.get("PYTHONUNBUFFERED", "")\n'
+                'print(f"WARNING -  PYTHONUNBUFFERED={unbuf}")\n'
+                'print("INFO -  Documentation built in 0.10 seconds")',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert "PYTHONUNBUFFERED=1" in result.stdout
+
+    def test_wrap_mode_command_not_found(self) -> None:
+        """Wrapper mode should handle missing commands gracefully."""
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                "--",
+                "nonexistent-command-xyz-12345",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode == 127
+        assert "command not found" in result.stdout.lower()
+
+    def test_wrap_mode_with_verbose_flag(self) -> None:
+        """Wrapper mode should pass our flags through correctly."""
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                "-v",
+                "--",
+                sys.executable,
+                "-c",
+                'print("WARNING -  Test warning")\n'
+                'print("INFO -  Documentation built in 1.00 seconds")',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert "WARNING" in result.stdout
+        assert "Test warning" in result.stdout
+
+    def test_wrap_mode_exit_code_on_error(self) -> None:
+        """Wrapper mode should return exit code 1 when errors are found."""
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                "--",
+                sys.executable,
+                "-c",
+                'print("ERROR -  Build failed")\n'
+                'print("INFO -  Documentation built in 1.00 seconds")',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode == 1
+        assert "ERROR" in result.stdout
+
+    def test_wrap_mode_no_warnings_clean_exit(self) -> None:
+        """Wrapper mode should exit cleanly with no warnings."""
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                "--",
+                sys.executable,
+                "-c",
+                'print("INFO -  Building documentation...")\n'
+                'print("INFO -  Documentation built in 0.50 seconds")',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode == 0
+        assert "No warnings or errors" in result.stdout
+
+    def test_wrap_mode_without_double_dash(self) -> None:
+        """Wrapper mode should work without -- when command doesn't start with -."""
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter",
+                "--no-progress",
+                "--no-color",
+                sys.executable,
+                "-c",
+                'print("WARNING -  Test warning")\n'
+                'print("INFO -  Documentation built in 1.00 seconds")',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert "WARNING" in result.stdout
+        assert "Test warning" in result.stdout
+
+
+class TestAnsiEscapeStripping:
+    """Tests for ANSI escape code handling in URL extraction."""
+
+    def test_server_url_strips_ansi_codes(self) -> None:
+        """Server URL should not contain ANSI escape codes."""
+        from docs_output_filter.backends.mkdocs import extract_build_info
+
+        lines = [
+            "INFO    -  Serving on http://127.0.0.1:8000/\x1b[0m",
+        ]
+        info = extract_build_info(lines)
+        assert info.server_url == "http://127.0.0.1:8000/"
+        assert "\x1b" not in info.server_url
+
+    def test_sphinx_server_url_strips_ansi_codes(self) -> None:
+        """Sphinx server URL should not contain ANSI escape codes."""
+        from docs_output_filter.backends.sphinx import SphinxBackend
+
+        backend = SphinxBackend()
+        lines = [
+            "[sphinx-autobuild] Serving on http://127.0.0.1:8000\x1b[0m",
+        ]
+        info = backend.extract_build_info(lines)
+        assert info.server_url == "http://127.0.0.1:8000"
+        assert "\x1b" not in info.server_url
+
+    def test_server_url_without_ansi_unchanged(self) -> None:
+        """Server URL without ANSI codes should be captured normally."""
+        from docs_output_filter.backends.mkdocs import extract_build_info
+
+        lines = [
+            "INFO    -  Serving on http://127.0.0.1:8000/",
+        ]
+        info = extract_build_info(lines)
+        assert info.server_url == "http://127.0.0.1:8000/"
+
+
 class TestInstallation:
     """Tests for package installation."""
 
     def test_can_run_as_module(self) -> None:
-        """Should be runnable as python -m mkdocs_filter."""
+        """Should be runnable as python -m docs_output_filter."""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter", "--version"],
+            [sys.executable, "-m", "docs_output_filter", "--version"],
             capture_output=True,
             text=True,
         )
         assert result.returncode == 0
 
     def test_entry_point_exists(self) -> None:
-        """Should have mkdocs-output-filter entry point."""
+        """Should have docs-output-filter entry point."""
         result = subprocess.run(
-            ["mkdocs-output-filter", "--version"],
+            ["docs-output-filter", "--version"],
             capture_output=True,
             text=True,
         )

@@ -4,12 +4,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-from mkdocs_filter.mcp_server import MkdocsFilterServer
-from mkdocs_filter.parsing import Issue, Level
+from docs_output_filter.mcp_server import DocsFilterServer
+from docs_output_filter.types import Issue, Level
 
 
-class TestMkdocsFilterServer:
-    """Tests for MkdocsFilterServer class."""
+class TestDocsFilterServer:
+    """Tests for DocsFilterServer class."""
 
     def test_creates_server_with_project_dir(self, tmp_path: Path) -> None:
         """Should create server with project directory."""
@@ -20,19 +20,19 @@ class TestMkdocsFilterServer:
         docs_dir.mkdir()
         (docs_dir / "index.md").write_text("# Test\n")
 
-        server = MkdocsFilterServer(project_dir=tmp_path)
+        server = DocsFilterServer(project_dir=tmp_path)
         assert server.project_dir == tmp_path
         assert not server.pipe_mode
 
     def test_creates_server_in_pipe_mode(self) -> None:
         """Should create server in pipe mode."""
-        server = MkdocsFilterServer(pipe_mode=True)
+        server = DocsFilterServer(pipe_mode=True)
         assert server.pipe_mode
         assert server.project_dir is None
 
     def test_parse_output_extracts_issues(self) -> None:
         """Should parse mkdocs output and extract issues."""
-        server = MkdocsFilterServer(pipe_mode=True)
+        server = DocsFilterServer(pipe_mode=True)
 
         output = """INFO -  Building documentation...
 WARNING -  A warning message
@@ -49,7 +49,7 @@ INFO -  Documentation built in 1.23 seconds"""
 
     def test_parse_output_extracts_build_info(self) -> None:
         """Should extract build info from output."""
-        server = MkdocsFilterServer(pipe_mode=True)
+        server = DocsFilterServer(pipe_mode=True)
 
         output = """INFO -  Building documentation to directory: /path/to/site
 INFO -  Serving on http://127.0.0.1:8000/
@@ -63,7 +63,7 @@ INFO -  Documentation built in 2.50 seconds"""
 
     def test_parse_output_deduplicates_issues(self) -> None:
         """Should deduplicate identical issues."""
-        server = MkdocsFilterServer(pipe_mode=True)
+        server = DocsFilterServer(pipe_mode=True)
 
         output = """WARNING -  Same warning
 WARNING -  Same warning
@@ -75,7 +75,7 @@ WARNING -  Same warning"""
 
     def test_issue_to_dict_basic(self) -> None:
         """Should convert issue to dictionary."""
-        server = MkdocsFilterServer(pipe_mode=True)
+        server = DocsFilterServer(pipe_mode=True)
         issue = Issue(
             level=Level.WARNING,
             source="mkdocs",
@@ -93,7 +93,7 @@ WARNING -  Same warning"""
 
     def test_issue_to_dict_verbose(self) -> None:
         """Should include code and traceback when verbose."""
-        server = MkdocsFilterServer(pipe_mode=True)
+        server = DocsFilterServer(pipe_mode=True)
         issue = Issue(
             level=Level.ERROR,
             source="markdown_exec",
@@ -110,7 +110,7 @@ WARNING -  Same warning"""
 
     def test_issue_ids_are_stable(self) -> None:
         """Same issue should get same ID."""
-        server = MkdocsFilterServer(pipe_mode=True)
+        server = DocsFilterServer(pipe_mode=True)
         issue = Issue(
             level=Level.WARNING,
             source="mkdocs",
@@ -126,7 +126,7 @@ WARNING -  Same warning"""
         """Should return build info as JSON."""
         import json
 
-        server = MkdocsFilterServer(pipe_mode=True)
+        server = DocsFilterServer(pipe_mode=True)
         server.build_info.server_url = "http://localhost:8000/"
         server.build_info.build_dir = "/path/to/site"
         server.build_info.build_time = "1.23"
@@ -145,7 +145,7 @@ class TestMCPServerCLI:
     def test_help_flag(self) -> None:
         """--help should print help and exit."""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter.mcp_server", "--help"],
+            [sys.executable, "-m", "docs_output_filter.mcp_server", "--help"],
             capture_output=True,
             text=True,
         )
@@ -157,7 +157,7 @@ class TestMCPServerCLI:
     def test_requires_project_dir_or_pipe(self) -> None:
         """Should require either --project-dir or --pipe."""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter.mcp_server"],
+            [sys.executable, "-m", "docs_output_filter.mcp_server"],
             capture_output=True,
             text=True,
         )
@@ -168,19 +168,25 @@ class TestMCPServerCLI:
         """Should validate that project directory exists."""
         nonexistent = tmp_path / "nonexistent"
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter.mcp_server", "--project-dir", str(nonexistent)],
+            [
+                sys.executable,
+                "-m",
+                "docs_output_filter.mcp_server",
+                "--project-dir",
+                str(nonexistent),
+            ],
             capture_output=True,
             text=True,
         )
         assert result.returncode != 0
         assert "does not exist" in result.stderr
 
-    def test_validates_mkdocs_yml_exists(self, tmp_path: Path) -> None:
-        """Should validate that mkdocs.yml exists in project directory."""
+    def test_validates_config_exists(self, tmp_path: Path) -> None:
+        """Should validate that mkdocs.yml or conf.py exists in project directory."""
         result = subprocess.run(
-            [sys.executable, "-m", "mkdocs_filter.mcp_server", "--project-dir", str(tmp_path)],
+            [sys.executable, "-m", "docs_output_filter.mcp_server", "--project-dir", str(tmp_path)],
             capture_output=True,
             text=True,
         )
         assert result.returncode != 0
-        assert "mkdocs.yml" in result.stderr.lower()
+        assert "mkdocs.yml" in result.stderr.lower() or "conf.py" in result.stderr.lower()

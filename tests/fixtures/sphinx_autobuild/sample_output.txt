@@ -1,0 +1,14 @@
+Running Sphinx v7.2.6
+loading pickled environment... done
+building [html]: targets for 1 source files that are out of date
+/Users/dev/myproject/docs/index.rst:10: WARNING: toctree contains reference to nonexisting document 'missing'
+The HTML pages are in /Users/dev/myproject/docs/_build/html.
+build succeeded, 1 warning.
+Serving on http://127.0.0.1:8000
+[sphinx-autobuild] Detected change in /Users/dev/myproject/docs/index.rst
+Running Sphinx v7.2.6
+loading pickled environment... done
+building [html]: targets for 1 source files that are out of date
+/Users/dev/myproject/docs/index.rst:10: WARNING: unknown option 'nonexistent'
+The HTML pages are in /Users/dev/myproject/docs/_build/html.
+build succeeded, 1 warning.

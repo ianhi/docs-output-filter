@@ -1,1 +1,1 @@
-# Tests for mkdocs-output-filter
+# Tests for docs-output-filter

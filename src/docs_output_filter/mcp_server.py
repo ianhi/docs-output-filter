@@ -1,16 +1,18 @@
-"""MCP Server for mkdocs-output-filter.
+"""MCP Server for docs-output-filter.
 
-Provides tools for code agents to get mkdocs issues and collaborate on fixes.
+Provides tools for code agents to get documentation build issues and collaborate on fixes.
+Supports both MkDocs and Sphinx projects.
 
 Usage:
-    # Watch mode (recommended): Read state from running mkdocs-output-filter CLI
-    mkdocs-output-filter mcp --watch
+    # Watch mode (recommended): Read state from running docs-output-filter CLI
+    docs-output-filter --mcp --watch
 
-    # Subprocess mode: Server manages mkdocs internally
-    mkdocs-output-filter mcp --project-dir /path/to/project
+    # Subprocess mode: Server manages builds internally
+    docs-output-filter --mcp --project-dir /path/to/project
 
-    # Pipe mode: Receive mkdocs output via stdin
-    mkdocs build 2>&1 | mkdocs-output-filter mcp --pipe
+    # Pipe mode: Receive build output via stdin
+    mkdocs build 2>&1 | docs-output-filter --mcp --pipe
+    sphinx-build docs build 2>&1 | docs-output-filter --mcp --pipe
 """
 
 from __future__ import annotations
@@ -27,23 +29,37 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-from mkdocs_filter.parsing import (
+from docs_output_filter.backends import Backend, BuildTool, detect_backend, get_backend
+from docs_output_filter.backends.mkdocs import MkDocsBackend
+from docs_output_filter.state import (
+    find_project_root,
+    get_state_file_path,
+    read_state_file,
+)
+from docs_output_filter.types import (
     BuildInfo,
     InfoCategory,
     InfoMessage,
     Issue,
     Level,
-    extract_build_info,
     group_info_messages,
-    parse_mkdocs_output,
-    read_state_file,
 )
 
 
-class MkdocsFilterServer:
-    """MCP server for mkdocs-filter.
+def _detect_project_type(project_dir: Path) -> BuildTool:
+    """Detect whether a project uses MkDocs or Sphinx."""
+    if (project_dir / "mkdocs.yml").exists():
+        return BuildTool.MKDOCS
+    if (project_dir / "conf.py").exists():
+        return BuildTool.SPHINX
+    return BuildTool.MKDOCS  # Default fallback
 
-    Provides tools for code agents to interact with mkdocs build issues.
+
+class DocsFilterServer:
+    """MCP server for docs-output-filter.
+
+    Provides tools for code agents to interact with documentation build issues.
+    Supports both MkDocs and Sphinx projects.
     """
 
     def __init__(
@@ -52,13 +68,6 @@ class MkdocsFilterServer:
         pipe_mode: bool = False,
         watch_mode: bool = False,
     ):
-        """Initialize the server.
-
-        Args:
-            project_dir: Path to mkdocs project directory (for subprocess mode)
-            pipe_mode: If True, expect mkdocs output from stdin
-            watch_mode: If True, read state from state file written by CLI
-        """
         self.project_dir = project_dir
         self.pipe_mode = pipe_mode
         self.watch_mode = watch_mode
@@ -66,13 +75,18 @@ class MkdocsFilterServer:
         self.info_messages: list[InfoMessage] = []
         self.build_info = BuildInfo()
         self.raw_output: list[str] = []
-        self._issue_ids: dict[str, str] = {}  # Cache for stable issue IDs
+        self._issue_ids: dict[str, str] = {}
         self._last_state_timestamp: float = 0
-        self._build_status: str = "complete"  # "building" or "complete"
+        self._build_status: str = "complete"
         self._build_started_at: float | None = None
 
-        # Create MCP server
-        self._server = Server("mkdocs-filter")
+        # Detect project type if project_dir is set
+        if project_dir:
+            self._project_type = _detect_project_type(project_dir)
+        else:
+            self._project_type = BuildTool.AUTO
+
+        self._server = Server("docs-filter")
         self._setup_tools()
 
     def _setup_tools(self) -> None:
@@ -91,7 +105,7 @@ class MkdocsFilterServer:
         return [
             Tool(
                 name="get_issues",
-                description="Get current warnings and errors from the last mkdocs build",
+                description="Get current warnings and errors from the last documentation build",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -125,14 +139,14 @@ class MkdocsFilterServer:
             ),
             Tool(
                 name="rebuild",
-                description="Trigger a new mkdocs build and return updated issues",
+                description="Trigger a new documentation build and return updated issues",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "verbose": {
                             "type": "boolean",
                             "default": False,
-                            "description": "Run mkdocs with --verbose for more file context",
+                            "description": "Run build with verbose output for more file context",
                         },
                     },
                 },
@@ -147,7 +161,7 @@ class MkdocsFilterServer:
             ),
             Tool(
                 name="get_raw_output",
-                description="Get the raw mkdocs output from the last build",
+                description="Get the raw build output from the last build",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -161,7 +175,7 @@ class MkdocsFilterServer:
             ),
             Tool(
                 name="get_info",
-                description="Get INFO-level messages like broken links, missing nav entries, absolute links",
+                description="Get INFO-level messages like broken links, missing nav entries, absolute links, deprecation warnings",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -174,6 +188,7 @@ class MkdocsFilterServer:
                                 "unrecognized_link",
                                 "missing_nav",
                                 "no_git_logs",
+                                "deprecation_warning",
                             ],
                             "default": "all",
                             "description": "Filter by category",
@@ -226,10 +241,7 @@ class MkdocsFilterServer:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
     def _refresh_from_state_file(self) -> bool:
-        """Refresh issues from state file if in watch mode.
-
-        Returns True if state was refreshed, False otherwise.
-        """
+        """Refresh issues from state file if in watch mode."""
         if not self.watch_mode:
             return False
 
@@ -237,15 +249,12 @@ class MkdocsFilterServer:
         if state is None:
             return False
 
-        # Always update build status (even if timestamp hasn't changed)
         self._build_status = state.build_status
         self._build_started_at = state.build_started_at
 
-        # Check if state has been updated since last read
         if state.timestamp <= self._last_state_timestamp:
             return False
 
-        # Update our state from the file
         self._last_state_timestamp = state.timestamp
         self.issues = state.issues
         self.info_messages = state.info_messages
@@ -254,11 +263,7 @@ class MkdocsFilterServer:
         return True
 
     def _get_build_in_progress_response(self) -> list[TextContent] | None:
-        """Check if a build is in progress and return a response if so.
-
-        Returns None if build is complete, otherwise returns a response telling
-        the agent to wait.
-        """
+        """Check if a build is in progress and return a response if so."""
         import time
 
         if self._build_status != "building":
@@ -272,16 +277,14 @@ class MkdocsFilterServer:
         response = {
             "status": "building",
             "message": f"Build in progress{elapsed}. Please wait and try again.",
-            "hint": "The mkdocs build is currently running. Query again in a few seconds to get the results.",
+            "hint": "The build is currently running. Query again in a few seconds to get the results.",
         }
         return [TextContent(type="text", text=json.dumps(response, indent=2))]
 
     def _handle_get_issues(self, arguments: dict[str, Any]) -> list[TextContent]:
         """Handle get_issues tool call."""
-        # Refresh from state file if in watch mode
         self._refresh_from_state_file()
 
-        # Check if build is in progress
         building_response = self._get_build_in_progress_response()
         if building_response:
             return building_response
@@ -291,16 +294,13 @@ class MkdocsFilterServer:
 
         issues = self.issues
 
-        # Filter issues
         if filter_type == "errors":
             issues = [i for i in issues if i.level == Level.ERROR]
         elif filter_type == "warnings":
             issues = [i for i in issues if i.level == Level.WARNING]
 
-        # Convert to dicts
         issue_dicts = [self._issue_to_dict(i, verbose=verbose) for i in issues]
 
-        # Build response
         error_count = sum(1 for i in issues if i.level == Level.ERROR)
         warning_count = sum(1 for i in issues if i.level == Level.WARNING)
 
@@ -315,12 +315,10 @@ class MkdocsFilterServer:
 
     def _handle_get_issue_details(self, arguments: dict[str, Any]) -> list[TextContent]:
         """Handle get_issue_details tool call."""
-        # Refresh from state file if in watch mode
         self._refresh_from_state_file()
 
         issue_id = arguments.get("issue_id", "")
 
-        # Find issue by ID
         for issue in self.issues:
             if self._get_issue_id(issue) == issue_id:
                 issue_dict = self._issue_to_dict(issue, verbose=True)
@@ -334,23 +332,20 @@ class MkdocsFilterServer:
             return [
                 TextContent(
                     type="text",
-                    text="Error: Cannot rebuild in pipe mode. Run mkdocs manually and pipe output.",
+                    text="Error: Cannot rebuild in pipe mode. Run the build manually and pipe output.",
                 )
             ]
 
         if self.watch_mode:
-            # In watch mode, just refresh from state file
-            # The user should save a file to trigger a rebuild in mkdocs serve
             refreshed = self._refresh_from_state_file()
             if not refreshed:
                 return [
                     TextContent(
                         type="text",
-                        text="No new build data. Save a file to trigger a rebuild in mkdocs serve, "
-                        "or check that mkdocs-output-filter is running with --share-state.",
+                        text="No new build data. Save a file to trigger a rebuild, "
+                        "or check that docs-output-filter is running with --share-state.",
                     )
                 ]
-            # Return current issues
             return self._handle_get_issues(arguments)
 
         if not self.project_dir:
@@ -358,13 +353,10 @@ class MkdocsFilterServer:
 
         verbose = arguments.get("verbose", False)
 
-        # Run mkdocs build
-        lines, return_code = self._run_mkdocs_build(verbose=verbose)
+        lines, return_code = self._run_build(verbose=verbose)
 
-        # Process output
         self._parse_output("\n".join(lines))
 
-        # Build response
         error_count = sum(1 for i in self.issues if i.level == Level.ERROR)
         warning_count = sum(1 for i in self.issues if i.level == Level.WARNING)
 
@@ -382,13 +374,9 @@ class MkdocsFilterServer:
 
     def _handle_get_build_info(self) -> list[TextContent]:
         """Handle get_build_info tool call."""
-        # Refresh from state file if in watch mode
         refreshed = self._refresh_from_state_file()
 
-        # Include diagnostic info if in watch mode
         if self.watch_mode:
-            from mkdocs_filter.parsing import find_project_root, get_state_file_path
-
             project_root = find_project_root()
             state_path = get_state_file_path(self.project_dir)
 
@@ -401,8 +389,8 @@ class MkdocsFilterServer:
             }
             if not (refreshed or self._last_state_timestamp > 0):
                 diag["hint"] = (
-                    "No state file found. Make sure mkdocs-output-filter is running with --share-state flag "
-                    "in a directory containing mkdocs.yml"
+                    "No state file found. Make sure docs-output-filter is running with --share-state flag "
+                    "in a directory containing mkdocs.yml or conf.py"
                 )
 
             build_info = json.loads(self._get_build_info_json())
@@ -419,10 +407,8 @@ class MkdocsFilterServer:
 
     def _handle_get_info(self, arguments: dict[str, Any]) -> list[TextContent]:
         """Handle get_info tool call for INFO-level messages."""
-        # Refresh from state file if in watch mode
         self._refresh_from_state_file()
 
-        # Check if build is in progress
         building_response = self._get_build_in_progress_response()
         if building_response:
             return building_response
@@ -432,7 +418,6 @@ class MkdocsFilterServer:
 
         messages = self.info_messages
 
-        # Filter by category if specified
         if category_filter != "all":
             try:
                 cat = InfoCategory(category_filter)
@@ -448,7 +433,6 @@ class MkdocsFilterServer:
             ]
 
         if grouped:
-            # Group by category
             groups = group_info_messages(messages)
             result: dict[str, Any] = {
                 "info_messages": {},
@@ -465,7 +449,6 @@ class MkdocsFilterServer:
                 ]
             return [TextContent(type="text", text=json.dumps(result, indent=2))]
         else:
-            # Flat list
             result_list = [
                 {
                     "category": m.category.value,
@@ -485,17 +468,15 @@ class MkdocsFilterServer:
             ]
 
     def _handle_fetch_build_log(self, arguments: dict[str, Any]) -> list[TextContent]:
-        """Handle fetch_build_log tool call - fetch and process a remote build log."""
+        """Handle fetch_build_log tool call."""
         url = arguments.get("url", "")
         verbose = arguments.get("verbose", False)
 
         if not url:
             return [TextContent(type="text", text="Error: URL is required")]
 
-        # Import the fetch function from the main module
-        from mkdocs_filter import fetch_remote_log
+        from docs_filter import fetch_remote_log
 
-        # Fetch the remote log
         content = fetch_remote_log(url)
         if content is None:
             return [
@@ -505,15 +486,20 @@ class MkdocsFilterServer:
                 )
             ]
 
-        # Parse the content
         lines = content.splitlines()
 
-        # Parse issues
-        from mkdocs_filter.parsing import parse_info_messages
+        # Auto-detect backend
+        backend: Backend | None = None
+        for line in lines:
+            backend = detect_backend(line)
+            if backend is not None:
+                break
+        if backend is None:
+            backend = MkDocsBackend()
 
-        all_issues = parse_mkdocs_output(lines)
+        all_issues = backend.parse_issues(lines)
 
-        # Deduplicate issues
+        # Deduplicate
         seen: set[tuple[Level, str]] = set()
         unique_issues: list[Issue] = []
         for issue in all_issues:
@@ -522,13 +508,9 @@ class MkdocsFilterServer:
                 seen.add(key)
                 unique_issues.append(issue)
 
-        # Parse INFO messages
-        info_messages = parse_info_messages(lines)
+        info_messages = backend.parse_info_messages(lines)
+        build_info = backend.extract_build_info(lines)
 
-        # Extract build info
-        build_info = extract_build_info(lines)
-
-        # Build response
         error_count = sum(1 for i in unique_issues if i.level == Level.ERROR)
         warning_count = sum(1 for i in unique_issues if i.level == Level.WARNING)
 
@@ -541,7 +523,6 @@ class MkdocsFilterServer:
             "issues": [self._issue_to_dict(i, verbose=verbose) for i in unique_issues],
         }
 
-        # Add info messages if any
         if info_messages:
             groups = group_info_messages(info_messages)
             response["info_messages"] = {}
@@ -556,7 +537,6 @@ class MkdocsFilterServer:
                 ]
             response["info_count"] = len(info_messages)
 
-        # Add build info if available
         if build_info.server_url:
             response["server_url"] = build_info.server_url
         if build_info.build_dir:
@@ -567,14 +547,22 @@ class MkdocsFilterServer:
         return [TextContent(type="text", text=json.dumps(response, indent=2))]
 
     def _parse_output(self, output: str) -> None:
-        """Parse mkdocs output and extract issues and build info."""
+        """Parse build output and extract issues and build info."""
         lines = output.splitlines()
         self.raw_output = lines
 
-        # Parse issues
-        all_issues = parse_mkdocs_output(lines)
+        # Auto-detect backend
+        backend: Backend | None = None
+        for line in lines:
+            backend = detect_backend(line)
+            if backend is not None:
+                break
+        if backend is None:
+            backend = get_backend(self._project_type)
 
-        # Deduplicate issues
+        all_issues = backend.parse_issues(lines)
+
+        # Deduplicate
         seen: set[tuple[Level, str]] = set()
         unique_issues: list[Issue] = []
         for issue in all_issues:
@@ -584,18 +572,29 @@ class MkdocsFilterServer:
                 unique_issues.append(issue)
 
         self.issues = unique_issues
+        self.build_info = backend.extract_build_info(lines)
 
-        # Extract build info
-        self.build_info = extract_build_info(lines)
-
-    def _run_mkdocs_build(self, verbose: bool = False) -> tuple[list[str], int]:
-        """Run mkdocs build and capture output."""
+    def _run_build(self, verbose: bool = False) -> tuple[list[str], int]:
+        """Run documentation build and capture output."""
         if not self.project_dir:
             return [], 1
 
-        cmd = ["mkdocs", "build", "--clean"]
-        if verbose:
-            cmd.append("--verbose")
+        project_type = _detect_project_type(self.project_dir)
+
+        if project_type == BuildTool.SPHINX:
+            # Sphinx build
+            cmd = ["sphinx-build"]
+            # Try to find source and build dirs from conf.py location
+            source_dir = str(self.project_dir)
+            build_dir = str(self.project_dir / "_build")
+            cmd.extend([source_dir, build_dir])
+            if verbose:
+                cmd.append("-v")
+        else:
+            # MkDocs build
+            cmd = ["mkdocs", "build", "--clean"]
+            if verbose:
+                cmd.append("--verbose")
 
         result = subprocess.run(
             cmd,
@@ -604,7 +603,6 @@ class MkdocsFilterServer:
             text=True,
         )
 
-        # Combine stdout and stderr
         output = result.stdout + result.stderr
         lines = output.splitlines()
 
@@ -612,13 +610,11 @@ class MkdocsFilterServer:
 
     def _get_issue_id(self, issue: Issue) -> str:
         """Get a stable ID for an issue."""
-        # Create a hash based on issue content
         content = f"{issue.level.value}:{issue.source}:{issue.message}"
         if issue.file:
             content += f":{issue.file}"
 
         if content not in self._issue_ids:
-            # Generate a short hash
             hash_bytes = hashlib.sha256(content.encode()).digest()
             self._issue_ids[content] = hash_bytes[:4].hex()
 
@@ -635,6 +631,10 @@ class MkdocsFilterServer:
 
         if issue.file:
             result["file"] = issue.file
+        if issue.line_number is not None:
+            result["line_number"] = issue.line_number
+        if issue.warning_code:
+            result["warning_code"] = issue.warning_code
 
         if verbose:
             if issue.code:
@@ -663,6 +663,10 @@ class MkdocsFilterServer:
             )
 
 
+# Keep old name as alias for backward compat
+MkdocsFilterServer = DocsFilterServer
+
+
 def run_mcp_server(
     project_dir: str | None = None,
     pipe_mode: bool = False,
@@ -670,23 +674,9 @@ def run_mcp_server(
     initial_build: bool = False,
     state_dir: str | None = None,
 ) -> int:
-    """Run the MCP server with the given configuration.
-
-    This function can be called from the main CLI when --mcp is used.
-
-    Args:
-        project_dir: Path to mkdocs project directory
-        pipe_mode: Read mkdocs output from stdin
-        watch_mode: Watch state file for updates
-        initial_build: Run initial mkdocs build on startup
-        state_dir: Directory to search for state file (for watch mode)
-
-    Returns:
-        Exit code (0 for success, non-zero for error)
-    """
+    """Run the MCP server with the given configuration."""
     import asyncio
 
-    # Validate arguments
     mode_count = sum([bool(project_dir and not watch_mode), pipe_mode, watch_mode])
     if mode_count == 0:
         print(
@@ -702,102 +692,86 @@ def run_mcp_server(
         )
         return 1
 
-    # Validate project directory if specified
     project_path = None
     if project_dir:
         project_path = Path(project_dir)
         if not project_path.exists():
             print(f"Error: Project directory does not exist: {project_dir}", file=sys.stderr)
             return 1
-        if not (project_path / "mkdocs.yml").exists():
-            print(f"Error: No mkdocs.yml found in {project_dir}", file=sys.stderr)
+        # Accept either mkdocs.yml or conf.py
+        if not (project_path / "mkdocs.yml").exists() and not (project_path / "conf.py").exists():
+            print(
+                f"Error: No mkdocs.yml or conf.py found in {project_dir}",
+                file=sys.stderr,
+            )
             return 1
 
-    # Create server
-    server = MkdocsFilterServer(
+    server = DocsFilterServer(
         project_dir=project_path,
         pipe_mode=pipe_mode,
         watch_mode=watch_mode,
     )
 
-    # Handle pipe mode - read initial input
     if pipe_mode:
         lines = []
         for line in sys.stdin:
             lines.append(line.rstrip())
         server._parse_output("\n".join(lines))
-
-    # Handle watch mode - do initial read of state file
     elif watch_mode:
         server._refresh_from_state_file()
-
-    # Handle initial build for subprocess mode
     elif initial_build and project_path:
-        lines, _ = server._run_mkdocs_build()
+        lines, _ = server._run_build()
         server._parse_output("\n".join(lines))
 
-    # Run the server
     asyncio.run(server.run())
 
     return 0
 
 
 def main() -> int:
-    """Main entry point for the MCP server CLI."""
+    """Main entry point for the MCP server CLI (legacy entry point)."""
+    import warnings
+
+    warnings.warn(
+        "mkdocs-output-filter-mcp is deprecated. Use 'docs-output-filter --mcp' instead.",
+        DeprecationWarning,
+        stacklevel=1,
+    )
+
     parser = argparse.ArgumentParser(
-        description="MCP Server for mkdocs-output-filter - provides tools for code agents",
+        description="MCP Server for docs-output-filter - provides tools for code agents",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+NOTE: This entry point is deprecated. Use 'docs-output-filter --mcp' instead.
+
 Examples:
-    # Watch mode (recommended) - auto-detects project from current directory
-    # First, run mkdocs-output-filter with --share-state in a terminal:
-    #   mkdocs serve 2>&1 | mkdocs-output-filter --share-state
-    # Then start the MCP server in watch mode:
-    mkdocs-output-filter mcp --watch
-
-    # Subprocess mode (for one-off builds)
-    mkdocs-output-filter mcp --project-dir /path/to/mkdocs/project
-
-    # Pipe mode
-    mkdocs build 2>&1 | mkdocs-output-filter mcp --pipe
-
-Usage with Claude Code:
-    Add to ~/.claude.json mcpServers section:
-    {
-        "mkdocs-output-filter": {
-            "command": "mkdocs-output-filter",
-            "args": ["mcp", "--watch"]
-        }
-    }
-
-    The server auto-detects the project from Claude Code's working directory.
-    Just run 'mkdocs serve 2>&1 | mkdocs-output-filter --share-state' in your
-    project and Claude Code will see the build issues.
+    docs-output-filter --mcp --watch
+    docs-output-filter --mcp --project-dir /path/to/project
+    mkdocs build 2>&1 | docs-output-filter --mcp --pipe
         """,
     )
     parser.add_argument(
         "--project-dir",
         type=str,
-        help="Path to mkdocs project directory (for subprocess mode or watch mode)",
+        help="Path to project directory (for subprocess mode or watch mode)",
     )
     parser.add_argument(
         "--pipe",
         action="store_true",
-        help="Read mkdocs output from stdin (pipe mode)",
+        help="Read build output from stdin (pipe mode)",
     )
     parser.add_argument(
         "--watch",
         action="store_true",
-        help="Watch mode: read state from .mkdocs-output-filter/state.json written by CLI",
+        help="Watch mode: read state from .docs-output-filter/state.json written by CLI",
     )
     parser.add_argument(
         "--initial-build",
         action="store_true",
-        help="Run an initial mkdocs build on startup (subprocess mode only)",
+        help="Run an initial build on startup (subprocess mode only)",
     )
     args = parser.parse_args()
 
-    # Validate arguments
     mode_count = sum([bool(args.project_dir and not args.watch), args.pipe, args.watch])
     if mode_count == 0:
         print(
@@ -813,41 +787,36 @@ Usage with Claude Code:
         )
         return 1
 
-    # Validate project directory if specified
     project_path = None
     if args.project_dir:
         project_path = Path(args.project_dir)
         if not project_path.exists():
             print(f"Error: Project directory does not exist: {args.project_dir}", file=sys.stderr)
             return 1
-        if not (project_path / "mkdocs.yml").exists():
-            print(f"Error: No mkdocs.yml found in {args.project_dir}", file=sys.stderr)
+        if not (project_path / "mkdocs.yml").exists() and not (project_path / "conf.py").exists():
+            print(
+                f"Error: No mkdocs.yml or conf.py found in {args.project_dir}",
+                file=sys.stderr,
+            )
             return 1
 
-    # Create server
-    server = MkdocsFilterServer(
+    server = DocsFilterServer(
         project_dir=project_path,
         pipe_mode=args.pipe,
         watch_mode=args.watch,
     )
 
-    # Handle pipe mode - read initial input
     if args.pipe:
         lines = []
         for line in sys.stdin:
             lines.append(line.rstrip())
         server._parse_output("\n".join(lines))
-
-    # Handle watch mode - do initial read of state file
     elif args.watch:
         server._refresh_from_state_file()
-
-    # Handle initial build for subprocess mode
     elif args.initial_build and project_path:
-        lines, _ = server._run_mkdocs_build()
+        lines, _ = server._run_build()
         server._parse_output("\n".join(lines))
 
-    # Run the server
     import asyncio
 
     asyncio.run(server.run())

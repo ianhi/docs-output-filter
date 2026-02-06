@@ -1,0 +1,10 @@
+Running Sphinx v7.2.6
+loading pickled environment... done
+building [html]: targets for 1 source files that are out of date
+updating environment: [new config] 1 added, 0 changed, 0 removed
+reading sources... [100%] index
+/Users/dev/myproject/docs/conf.py:25: ERROR: Unknown config value 'html_theme_options.navigation_depth'
+/Users/dev/myproject/docs/api.rst:15: WARNING: duplicate label api-reference [dupref]
+/Users/dev/myproject/docs/index.rst:3: ERROR: Content block expected for the "code-block" directive; none found.
+The HTML pages are in /Users/dev/myproject/docs/_build/html.
+build finished with 2 errors, 1 warning.
