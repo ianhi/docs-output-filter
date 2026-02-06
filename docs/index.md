@@ -1,16 +1,21 @@
 # docs-output-filter
 
+**Filter documentation build output to show only what matters: warnings and errors.**
+
+Works with **MkDocs** and **Sphinx** (including sphinx-autobuild, Jupyter Book, myst-nb).
+
 ```bash
+pip install docs-output-filter
 docs-output-filter -- mkdocs serve --livereload
 ```
 
-**Filter documentation build output to show only what matters: warnings and errors.**
+For AI code assistants ([details](mcp-server.md)):
 
-Works with **MkDocs** and **Sphinx** (including sphinx-autobuild, Jupyter Book, myst-nb). Includes an [MCP server](mcp-server.md) for AI code assistant integration (Claude Code, etc.).
+```bash
+claude mcp add --scope user --transport stdio docs-output-filter -- docs-output-filter --mcp --watch
+```
 
 ## What It Does
-
-docs-output-filter processes documentation build output and:
 
 - **Shows** WARNING and ERROR level messages with rich formatting
 - **Highlights** code execution errors (markdown_exec, myst-nb) with syntax-highlighted code blocks
