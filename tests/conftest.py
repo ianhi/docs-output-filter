@@ -83,8 +83,7 @@ def run_filter(input_text: str, *args: str) -> tuple[str, int]:
     return result.stdout + result.stderr, result.returncode
 
 
-# Keep old name for backward compat in tests
-run_mkdocs_filter = run_filter
+run_mkdocs_filter = run_filter  # alias used in test_integration.py
 
 
 @pytest.fixture
