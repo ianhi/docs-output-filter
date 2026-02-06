@@ -482,7 +482,7 @@ class DocsFilterServer:
         if not url:
             return [TextContent(type="text", text="Error: URL is required")]
 
-        from docs_filter import fetch_remote_log
+        from docs_output_filter.remote import fetch_remote_log
 
         content = fetch_remote_log(url)
         if content is None:
