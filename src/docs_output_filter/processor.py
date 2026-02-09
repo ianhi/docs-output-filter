@@ -113,7 +113,9 @@ class StreamingProcessor:
             elif re.match(r"^(INFO|WARNING|ERROR|DEBUG)\s+-", line) or re.match(
                 r"^\d{4}-\d{2}-\d{2}.*?(INFO|WARNING|ERROR)", line
             ):
-                self.saw_build_output = True
+                self.saw_build_output = (
+                    True  # pragma: no cover — detect_backend catches these first
+                )
 
         # Detect serve mode
         if "Serving on http" in line:
@@ -128,7 +130,7 @@ class StreamingProcessor:
             or re.match(r"^ConnectionError:", stripped)
             or "Address already in use" in line
             or "Permission denied" in line
-            and "OSError" in line
+            or "OSError" in line
         ):
             self.saw_server_error = True
         if self.saw_server_error:
