@@ -24,7 +24,13 @@ Update this docstring if you add new submodules or change the public API surface
 
 from __future__ import annotations
 
-from docs_output_filter.backends import Backend, BuildTool, detect_backend, get_backend
+from docs_output_filter.backends import (
+    Backend,
+    BuildTool,
+    detect_backend,
+    detect_backend_from_lines,
+    get_backend,
+)
 from docs_output_filter.backends.mkdocs import (
     detect_chunk_boundary,
     extract_build_info,
@@ -57,8 +63,8 @@ from docs_output_filter.types import (
     InfoMessage,
     Issue,
     Level,
-    StreamingState,
     dedent_code,
+    deduplicate_issues,
     group_info_messages,
 )
 
@@ -67,7 +73,6 @@ __all__ = [
     "Level",
     "Issue",
     "BuildInfo",
-    "StreamingState",
     "StateFileData",
     "ChunkBoundary",
     "DisplayMode",
@@ -77,6 +82,7 @@ __all__ = [
     "Backend",
     "BuildTool",
     "detect_backend",
+    "detect_backend_from_lines",
     "get_backend",
     # Parsing functions (mkdocs - for backward compat)
     "detect_chunk_boundary",
@@ -86,6 +92,7 @@ __all__ = [
     "parse_markdown_exec_issue",
     "parse_info_messages",
     "group_info_messages",
+    "deduplicate_issues",
     "dedent_code",
     # State file functions
     "find_project_root",

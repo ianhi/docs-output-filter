@@ -33,27 +33,27 @@ class Backend(Protocol):
 
     def detect(self, line: str) -> bool:
         """Return True if this line indicates this backend's tool."""
-        ...
+        ...  # pragma: no cover
 
     def parse_issues(self, lines: list[str]) -> list[Issue]:
         """Parse warnings/errors from build output lines."""
-        ...
+        ...  # pragma: no cover
 
     def parse_info_messages(self, lines: list[str]) -> list[InfoMessage]:
         """Parse INFO-level messages (broken links, deprecations, etc.)."""
-        ...
+        ...  # pragma: no cover
 
     def detect_chunk_boundary(self, line: str, prev_line: str | None) -> ChunkBoundary:
         """Detect streaming chunk boundaries."""
-        ...
+        ...  # pragma: no cover
 
     def extract_build_info(self, lines: list[str]) -> BuildInfo:
         """Extract server URL, build dir, build time."""
-        ...
+        ...  # pragma: no cover
 
     def is_in_multiline_block(self, lines: list[str]) -> bool:
         """Check if buffer is in an unclosed multi-line block."""
-        ...
+        ...  # pragma: no cover
 
 
 # Registry of available backends (lazily populated)
@@ -80,6 +80,17 @@ def detect_backend(line: str) -> Backend | None:
         if backend.detect(line):
             return backend
     return None
+
+
+def detect_backend_from_lines(
+    lines: list[str], fallback_tool: BuildTool = BuildTool.MKDOCS
+) -> Backend:
+    """Auto-detect backend by scanning lines, falling back to the given tool."""
+    for line in lines:
+        backend = detect_backend(line)
+        if backend is not None:
+            return backend
+    return get_backend(fallback_tool)
 
 
 def get_backend(tool: BuildTool) -> Backend:

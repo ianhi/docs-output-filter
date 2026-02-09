@@ -5,7 +5,8 @@ This module contains all data types used across the CLI, backends, and MCP serve
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections import defaultdict
+from dataclasses import dataclass
 from enum import Enum
 
 
@@ -61,17 +62,6 @@ class BuildInfo:
     reported_warning_count: int | None = None  # Warning count reported by build tool
 
 
-@dataclass
-class StreamingState:
-    """State for streaming processor."""
-
-    buffer: list[str] = field(default_factory=list)
-    issues: list[Issue] = field(default_factory=list)
-    build_info: BuildInfo = field(default_factory=BuildInfo)
-    seen_issues: set[tuple[Level, str]] = field(default_factory=set)
-    in_markdown_exec_block: bool = False
-
-
 class ChunkBoundary(Enum):
     """Types of chunk boundaries in build output."""
 
@@ -86,28 +76,37 @@ def group_info_messages(
     messages: list[InfoMessage],
 ) -> dict[InfoCategory, list[InfoMessage]]:
     """Group InfoMessages by category."""
-    groups: dict[InfoCategory, list[InfoMessage]] = {}
+    groups: dict[InfoCategory, list[InfoMessage]] = defaultdict(list)
     for msg in messages:
-        if msg.category not in groups:
-            groups[msg.category] = []
         groups[msg.category].append(msg)
-    return groups
+    return dict(groups)
+
+
+def deduplicate_issues(issues: list[Issue]) -> list[Issue]:
+    """Remove duplicate issues based on (level, message[:100]) key."""
+    seen: set[tuple[Level, str]] = set()
+    unique: list[Issue] = []
+    for issue in issues:
+        key = (issue.level, issue.message[:100])
+        if key not in seen:
+            seen.add(key)
+            unique.append(issue)
+    return unique
 
 
 def dedent_code(code: str) -> str:
     """Remove consistent leading whitespace from code."""
     lines = code.split("\n")
-    if not lines:
+    if not lines:  # pragma: no cover — str.split() never returns empty list
         return code
 
-    min_indent = float("inf")
+    min_indent: int | None = None
     for line in lines:
         if line.strip():
             indent = len(line) - len(line.lstrip())
-            min_indent = min(min_indent, indent)
+            if min_indent is None or indent < min_indent:
+                min_indent = indent
 
-    if min_indent < float("inf"):
-        return "\n".join(
-            line[int(min_indent) :] if len(line) > min_indent else line for line in lines
-        )
+    if min_indent is not None:
+        return "\n".join(line[min_indent:] if len(line) > min_indent else line for line in lines)
     return code
