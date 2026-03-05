@@ -35,6 +35,7 @@ Streaming mode is now the default (use `--batch` to force batch mode).
 - **Interactive mode** (`-i`) for toggling between filtered/raw output during serve
 - **Remote log fetching** (`--url`) - fetch and parse build logs from ReadTheDocs or any URL
 - **State sharing** (`--share-state`) - writes state file for MCP server integration
+- **JSON output** (`--json`) - machine-readable output for LLMs, scripts, CI (ANSI-stripped, condensed tracebacks)
 - **MCP server** (`--mcp`) for code agent integration with 7 tools
 
 ## Commands

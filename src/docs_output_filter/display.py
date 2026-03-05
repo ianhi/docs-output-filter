@@ -7,7 +7,13 @@ Key functions:
 - print_issue(): Render a single warning/error with code blocks and tracebacks
 - print_info_groups(): Render grouped INFO messages (broken links, deprecation, etc.)
 - print_summary(): Render the build summary footer with counts, build info, hints
+- format_issues_json(): Convert issues/info/build_info to JSON-serializable dict (for --json CLI)
 - truncate_line(): Truncate a line for spinner display
+
+Shared helpers (used by both display and JSON/MCP paths):
+- _strip_ansi(): Remove ANSI escape codes from text
+- _condense_traceback(): Extract error line(s) from a traceback (up to 3 lines)
+- _issue_to_dict(): Convert an Issue to a JSON-serializable dict
 
 Also contains:
 - DisplayMode enum (FILTERED/RAW for interactive mode)

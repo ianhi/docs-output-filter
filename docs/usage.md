@@ -65,6 +65,7 @@ docs-output-filter --tool mkdocs -- some-command
 | `-i, --interactive` | Interactive mode with keyboard controls |
 | `--tool mkdocs\|sphinx\|auto` | Force build tool detection (default: auto) |
 | `--share-state` | Write issues to state file for MCP server |
+| `--json` | Machine-readable JSON output (for LLMs, scripts, CI) |
 | `--url URL` | Fetch and process a remote build log (e.g., ReadTheDocs) |
 | `--version` | Show version number |
 
@@ -198,6 +199,44 @@ This is useful for debugging failed builds on CI services without copying logs m
 - **ReadTheDocs** - paste the web UI URL directly, auto-transforms to raw log
 - Plain text log files
 - JSON with common log fields (`output`, `log`, `logs`, `build_log`, `stdout`, `stderr`)
+
+### JSON Output
+
+For machine-readable output (useful for LLMs, scripts, and CI pipelines), use `--json`:
+
+```bash
+# Pipe mode
+mkdocs build 2>&1 | docs-output-filter --json
+
+# With a remote build log
+docs-output-filter --url https://app.readthedocs.org/projects/myproject/builds/12345/ --json
+
+# Verbose (full tracebacks instead of condensed)
+mkdocs build 2>&1 | docs-output-filter --json -v
+```
+
+Output is a JSON object with issues, info summary, and build info — ANSI codes are stripped and tracebacks are condensed by default:
+
+```json
+{
+  "total": 1,
+  "errors": 0,
+  "warnings": 1,
+  "issues": [
+    {
+      "level": "WARNING",
+      "source": "markdown_exec",
+      "message": "ValueError: test error",
+      "file": "docs/index.md",
+      "output": "ValueError: test error"
+    }
+  ],
+  "build_info": {
+    "build_dir": "site",
+    "build_time": "1.23"
+  }
+}
+```
 
 ### With AI Code Assistants
 

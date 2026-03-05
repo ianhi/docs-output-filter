@@ -72,7 +72,7 @@ Get current warnings and errors. Also includes a summary of INFO-level messages 
 | `filter` | `string` | Filter issues: `"all"`, `"errors"`, or `"warnings"` |
 | `verbose` | `boolean` | Include full code blocks and tracebacks |
 
-**Returns:** JSON with issue count, array, and INFO message summary
+**Returns:** JSON with issue count, array (including condensed traceback), and INFO message summary. ANSI codes are stripped. Use `verbose: true` for full tracebacks and code blocks.
 
 ```json
 {
@@ -85,7 +85,8 @@ Get current warnings and errors. Also includes a summary of INFO-level messages 
       "level": "WARNING",
       "source": "markdown_exec",
       "message": "ValueError: test error",
-      "file": "docs/index.md → session 'test' → line 8"
+      "file": "docs/index.md → session 'test' → line 8",
+      "traceback": "ValueError: test error"
     }
   ],
   "info_summary": {

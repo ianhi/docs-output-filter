@@ -145,6 +145,7 @@ sphinx-build docs _build 2>&1 | docs-output-filter
 | **Streaming mode** | Real-time output for `mkdocs serve` / `sphinx-autobuild` with rebuild detection |
 | **Interactive mode** | Toggle between raw/filtered with keyboard (`-i`) |
 | **Remote logs** | Fetch and parse build logs from ReadTheDocs and other CI |
+| **JSON output** | Machine-readable output for LLMs, scripts, and CI (`--json`) |
 | **MCP server** | API for AI code assistants like Claude Code |
 
 ## Options
@@ -157,6 +158,7 @@ sphinx-build docs _build 2>&1 | docs-output-filter
 | `--no-color` | Disable colored output |
 | `--raw` | Pass through unfiltered build output |
 | `-i, --interactive` | Toggle raw/filtered with keyboard |
+| `--json` | Machine-readable JSON output (for LLMs, scripts, CI) |
 | `--url URL` | Fetch and process a remote build log |
 | `--tool mkdocs\|sphinx\|auto` | Force build tool detection (default: auto) |
 | `--share-state` | Write state for MCP server integration |
