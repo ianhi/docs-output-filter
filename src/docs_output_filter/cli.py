@@ -223,7 +223,6 @@ Note: Use --verbose with mkdocs to get file paths for code block errors.
             force_terminal=not args.no_color,
             no_color=args.no_color,
             width=120 if (not wrap_command and sys.stdin.isatty() is False) else None,
-            soft_wrap=True,
         )
 
         # Wrapper mode - run command as subprocess
