@@ -23,6 +23,7 @@ import os
 import re
 import sys
 from enum import Enum
+from typing import Any
 
 from rich.console import Console
 from rich.panel import Panel
@@ -36,6 +37,7 @@ from docs_output_filter.types import (
     Issue,
     Level,
     dedent_code,
+    group_info_messages,
 )
 
 
@@ -380,3 +382,64 @@ def print_summary(
         )
         suggested = build_stderr_hint()
         console.print(f"[dim]  {suggested}[/dim]")
+
+
+def _issue_to_dict(issue: Issue, verbose: bool = False) -> dict[str, Any]:
+    """Convert an Issue to a JSON-serializable dict."""
+    result: dict[str, Any] = {
+        "level": issue.level.value,
+        "source": issue.source,
+        "message": issue.message,
+    }
+    if issue.file:
+        result["file"] = issue.file
+    if issue.line_number is not None:
+        result["line_number"] = issue.line_number
+    if issue.warning_code:
+        result["warning_code"] = issue.warning_code
+    if issue.code:
+        result["code"] = issue.code
+    if issue.output:
+        result["output"] = issue.output
+    return result
+
+
+def format_issues_json(
+    issues: list[Issue],
+    info_messages: list[InfoMessage],
+    build_info: BuildInfo,
+    verbose: bool = False,
+) -> dict[str, Any]:
+    """Format issues, info messages, and build info as a JSON-serializable dict.
+
+    Produces structured output suitable for machine consumption (LLMs, scripts).
+    """
+    error_count = sum(1 for i in issues if i.level == Level.ERROR)
+    warning_count = sum(1 for i in issues if i.level == Level.WARNING)
+
+    response: dict[str, Any] = {
+        "total": len(issues),
+        "errors": error_count,
+        "warnings": warning_count,
+        "issues": [_issue_to_dict(i, verbose=verbose) for i in issues],
+    }
+
+    if info_messages:
+        groups = group_info_messages(info_messages)
+        info_summary: dict[str, int] = {}
+        for cat, msgs in groups.items():
+            info_summary[cat.value] = len(msgs)
+        info_summary["total"] = len(info_messages)
+        response["info_summary"] = info_summary
+
+    build_info_dict: dict[str, str] = {}
+    if build_info.server_url:
+        build_info_dict["server_url"] = build_info.server_url
+    if build_info.build_dir:
+        build_info_dict["build_dir"] = build_info.build_dir
+    if build_info.build_time:
+        build_info_dict["build_time"] = build_info.build_time
+    if build_info_dict:
+        response["build_info"] = build_info_dict
+
+    return response

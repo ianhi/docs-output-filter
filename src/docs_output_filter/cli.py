@@ -31,10 +31,56 @@ from docs_output_filter.modes import (
 __version__ = "0.1.0"
 
 
+def _run_url_json_mode(args: argparse.Namespace) -> int:
+    """Fetch URL and output JSON."""
+    import json
+
+    from docs_output_filter.remote import fetch_remote_log
+
+    content = fetch_remote_log(args.url)
+    if content is None:
+        print(json.dumps({"error": f"Failed to fetch build log from {args.url}"}))
+        return 1
+
+    lines = content.splitlines()
+    return _run_json_output(lines, args)
+
+
+def _run_json_output(lines: list[str], args: argparse.Namespace) -> int:
+    """Parse lines and output JSON. Used by --json flag with any input source."""
+    import json
+
+    from docs_output_filter.backends import BuildTool, detect_backend_from_lines, get_backend
+    from docs_output_filter.display import format_issues_json
+    from docs_output_filter.types import Level, deduplicate_issues
+
+    tool = BuildTool(getattr(args, "tool", "auto"))
+    if tool != BuildTool.AUTO:
+        backend = get_backend(tool)
+    else:
+        backend = detect_backend_from_lines(lines)
+
+    build_info = backend.extract_build_info(lines)
+    issues = backend.parse_issues(lines)
+
+    if args.errors_only:
+        issues = [i for i in issues if i.level == Level.ERROR]
+
+    unique_issues = deduplicate_issues(issues)
+    info_messages = backend.parse_info_messages(lines)
+
+    result = format_issues_json(unique_issues, info_messages, build_info, verbose=args.verbose)
+    print(json.dumps(result, indent=2))
+
+    error_count = sum(1 for i in unique_issues if i.level == Level.ERROR)
+    return 1 if error_count else 0
+
+
 def main() -> int:
     """Main entry point for the CLI."""
     parser = argparse.ArgumentParser(
-        description="Filter documentation build output to show only warnings and errors (MkDocs, Sphinx)",
+        description="Filter documentation build output to show only warnings and errors (MkDocs, Sphinx).\n"
+        "Use --json for machine-readable JSON output (for LLMs, scripts, CI).",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -56,6 +102,11 @@ Examples:
 
 Note: Use --verbose with mkdocs to get file paths for code block errors.
         """,
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output JSON instead of formatted text (for LLMs, scripts, CI)",
     )
     parser.add_argument(
         "-v",
@@ -155,6 +206,11 @@ Note: Use --verbose with mkdocs to get file paths for code block errors.
                 print(line, end="")
             return 0
 
+        # JSON mode (stdin) - structured output for LLMs/scripts
+        if args.json and not args.url:
+            lines = [line.rstrip() for line in sys.stdin]
+            return _run_json_output(lines, args)
+
         # Parse wrapper command (strip leading '--' if present)
         wrap_command = getattr(args, "command", [])
         if wrap_command and wrap_command[0] == "--":
@@ -173,6 +229,8 @@ Note: Use --verbose with mkdocs to get file paths for code block errors.
 
         # URL mode
         if args.url:
+            if args.json:
+                return _run_url_json_mode(args)
             return run_url_mode(console, args)
 
         # Interactive mode

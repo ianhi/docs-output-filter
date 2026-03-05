@@ -173,6 +173,9 @@ tests/fixtures/
 - `--mcp`: Run as MCP server (use with `--watch`, `--project-dir`, or `--pipe`)
 - `--tool mkdocs|sphinx|auto`: Specify build tool (default: auto-detect)
 
+**Output format:**
+- `--json`: Output JSON instead of formatted text (for LLMs, scripts, CI)
+
 **Display options:**
 - `-v, --verbose`: Show full code blocks and tracebacks
 - `-e, --errors-only`: Show only errors, not warnings
