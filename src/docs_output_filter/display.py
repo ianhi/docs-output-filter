@@ -119,7 +119,7 @@ def print_issue(console: Console, issue: Issue, verbose: bool = False) -> None:
             else:
                 output_text = clean_output
             output_text = dedent_code(output_text)
-            console.print(Panel(output_text, title="Traceback", border_style="red"))
+            console.print(Panel(output_text, title="Traceback", border_style="red", expand=False))
         else:
             error_lines: list[str] = []
             for line in reversed(output_lines):
@@ -144,6 +144,7 @@ def print_issue(console: Console, issue: Issue, verbose: bool = False) -> None:
                         error_summary,
                         title="Error Output",
                         border_style="red",
+                        expand=False,
                         subtitle="use -v for full traceback",
                         subtitle_align="right",
                     )
