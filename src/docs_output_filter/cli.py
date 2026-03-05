@@ -28,7 +28,10 @@ from docs_output_filter.modes import (
     run_wrap_mode,
 )
 
-__version__ = "0.1.0"
+try:
+    from docs_output_filter._version import __version__
+except ImportError:
+    __version__ = "0.0.0.dev0"
 
 
 def _run_url_json_mode(args: argparse.Namespace) -> int:

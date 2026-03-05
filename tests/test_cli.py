@@ -15,7 +15,9 @@ class TestCLI:
             text=True,
         )
         assert result.returncode == 0
-        assert "0.1.0" in result.stdout
+        # Version string contains digits and dots (e.g., "0.1.1" or "0.1.1.dev14+g...")
+        assert result.stdout.strip()  # non-empty
+        assert any(c.isdigit() for c in result.stdout)
 
     def test_help_flag(self) -> None:
         """--help should print help and exit."""
@@ -632,4 +634,4 @@ class TestInstallation:
             text=True,
         )
         assert result.returncode == 0
-        assert "0.1.0" in result.stdout
+        assert "docs-output-filter" in result.stdout
