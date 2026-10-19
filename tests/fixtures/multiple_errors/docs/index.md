@@ -6,6 +6,7 @@ This page demonstrates multiple error types.
 
 ```python exec="on" session="errors"
 import sys
+
 print(f"Python version: {sys.version}")
 raise RuntimeError("Intentional runtime error")
 ```
